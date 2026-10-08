@@ -49,6 +49,8 @@ export interface HookContext {
     onCredentials: (path: string, body: { password?: unknown; new_password?: unknown }, response: unknown) => void;
     onLogout: () => void;
     onError: (error: unknown, channelId: string) => void;
+    fetchEmbeds: (urls: string[]) => Promise<Record<string, unknown[]>>;
+    fetchSoundmoji: (refs: string[]) => Promise<unknown[]>;
 }
 
 const AUTH_URL = /^\/auth\/(login|register)$/;
@@ -98,6 +100,62 @@ export const createHooks = (ctx: HookContext) => {
         payloads.set(message.id, payload);
     };
 
+    // Encrypted messages carry no server-made previews. The links found after decrypting are looked up one by one
+    // (the server learns the links, not the message) and the previews are attached on this device only
+    const previewed = new Map<string, unknown[]>();
+    const previews = (message: RawMessage) => {
+        try {
+            if (localStorage.getItem("fosscord-e2ee-previews") === "0") return;
+        } catch {
+            /* storage unavailable: previews stay on */
+        }
+        const text = typeof message.content === "string" ? message.content : "";
+        const urls = [...new Set((text.match(/<?https?:\/\/[^\s<>]+>?/g) ?? []).filter((u) => !u.startsWith("<")))].slice(0, 5);
+        if (!urls.length) return;
+        const apply = (found: Record<string, unknown[]>) => {
+            const embeds = urls.flatMap((u) => found[u] ?? previewed.get(u) ?? []);
+            if (!embeds.length) return;
+            const target = readable.get(message.channel_id)?.get(message.id) ?? clone(message);
+            const copy = target as RawMessage & { embeds?: unknown[]; flags?: number };
+            copy.embeds = embeds;
+            copy.flags = Number(copy.flags ?? 0) & ~4;
+            redispatch(copy);
+        };
+        const missing = urls.filter((u) => !previewed.has(u));
+        if (!missing.length) return void setTimeout(() => apply({}), 300);
+        ctx.fetchEmbeds(missing)
+            .then((found) => {
+                for (const u of missing) previewed.set(u, found[u] ?? []);
+                apply(found);
+            })
+            .catch(() => {});
+    };
+
+    // Soundmojis (<sound:guild:id>) are attached by the server for ordinary messages. For encrypted ones the ids found
+    // after decrypting are looked up and the sounds attached here, before the message reaches the client's store: the
+    // store reads them when it builds the message and ignores them on a later update
+    const soundCache = new Map<string, unknown>();
+    const soundmoji = async (message: RawMessage) => {
+        const text = typeof message.content === "string" ? message.content : "";
+        const refs = [...new Set([...text.matchAll(/<sound:(\d+):(\d+)>/g)].map(([, guild, sound]) => `${guild}:${sound}`))].slice(0, 25);
+        if (!refs.length) return;
+        const soundId = (ref: string) => ref.split(":")[1];
+        const missing = refs.filter((ref) => !soundCache.has(soundId(ref)));
+        if (missing.length) {
+            try {
+                for (const sound of (await ctx.fetchSoundmoji(missing)) as { sound_id?: string }[]) if (sound?.sound_id) soundCache.set(String(sound.sound_id), sound);
+                for (const ref of missing) if (!soundCache.has(soundId(ref))) soundCache.set(soundId(ref), null);
+            } catch {
+                /* offline or rate limited: the text stays as it is */
+            }
+        }
+        const sounds = refs.map((ref) => soundCache.get(soundId(ref))).filter(Boolean);
+        if (!sounds.length) return;
+        message.soundboard_sounds = sounds;
+        // the store builds its record without them for messages that arrive in a list, so they are put on the record itself
+        setTimeout(() => ctx.updateRecord(message), 400);
+    };
+
     const decryptOne = (message: RawMessage) => {
         const key = `${message.id}:${message.encrypted?.sig}`;
         const sync = engine.cached(message);
@@ -105,8 +163,10 @@ export const createHooks = (ctx: HookContext) => {
             show(message, sync);
             states.set(message.id, { state: "decrypted" });
             retry.delete(message.id);
-            remember(message);
-            return Promise.resolve();
+            return soundmoji(message).then(() => {
+                remember(message);
+                previews(message);
+            });
         }
         if (!ctx.isReady()) {
             if (ctx.failClosed()) {
@@ -131,7 +191,9 @@ export const createHooks = (ctx: HookContext) => {
                     states.set(message.id, { state: "decrypted" });
                     retry.delete(message.id);
                     show(message, payload);
+                    await soundmoji(message);
                     remember(message);
+                    previews(message);
                 } catch (error) {
                     const code = error instanceof E2eeError ? error.code : null;
                     const state: MessageState = code === "LOCKED" ? "locked" : code === "NO_KEY" ? "missing" : code === "RESET" ? "reset" : "failed";
@@ -437,6 +499,8 @@ export const createHooks = (ctx: HookContext) => {
                 if (hit !== undefined) {
                     show(message, hit);
                     states.set(message.id, { state: "decrypted" });
+                    remember(message);
+                    previews(message);
                     continue;
                 }
                 const copy = clone(message);

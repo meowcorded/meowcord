@@ -195,6 +195,8 @@ ready.then((ok) => {
 });
 
 const hooks = createHooks({
+    fetchEmbeds: async (urls) => (await api.request<{ embeds: Record<string, unknown[]> }>("post", "/e2ee/embeds", { urls })).embeds ?? {},
+    fetchSoundmoji: async (refs) => (await api.request<{ sounds: unknown[] }>("post", "/e2ee/soundmoji", { refs })).sounds ?? [],
     engine,
     attachments,
     sticker,
@@ -224,6 +226,7 @@ const hooks = createHooks({
             loader.updateMessage?.(message.channel_id, message.id, {
                 content: message.content ?? "",
                 stickerItems: message.sticker_items ?? [],
+                ...(message.soundboard_sounds?.length ? { soundboardSounds: message.soundboard_sounds } : {}),
             });
         } catch (error) {
             console.error("[e2ee] couldn't refresh a decrypted message", error);

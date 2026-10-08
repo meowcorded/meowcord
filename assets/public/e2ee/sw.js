@@ -129,7 +129,7 @@ ${final ? 1 : 0}`);
         clientId,
       );
       posters.set(path, pending);
-      pending.then((image2) => image2 || posters.delete(path));
+      pending.then((image) => image || posters.delete(path));
     }
     const image = await pending;
     if (!image) return missing();
