@@ -23,11 +23,7 @@ after registering your operator account, grant it access locally using its numer
 
 ## instances
 
-public meowcord instances. to add yours, open a pull request that adds a row.
-
-| instance | link | source |
-| -------- | ---- | ------ |
-| Tabaque  | [tabaque.lol](https://tabaque.lol) | [PoZorKino/tabaque](https://github.com/PoZorKino/tabaque) |
+public meowcord instances are listed in [instances.md](instances.md). to add yours, open a pull request that adds a row there.
 
 ## contributing
 
