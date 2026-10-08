@@ -107,6 +107,46 @@ ${match[4]}
   var FILE_PREFIX = "/e2ee/attachments/";
   var SW_PATH = "/e2ee-sw.js";
   var TAG = 16;
+  var CARD_TYPES = new Set(["safety_system_notification", "safety_policy_notice"]);
+  var CARD_FIELDS = new Set([
+    "icon_type",
+    "theme",
+    "header",
+    "body",
+    "timestamp",
+    "ctas",
+    "learn_more_link",
+    "classification_id",
+    "incident_time",
+  ]);
+  var parseCards = (raw) => {
+    if (!Array.isArray(raw)) return [];
+    const cards = [];
+    for (const item of raw.slice(0, 1)) {
+      if (
+        !item ||
+        typeof item !== "object" ||
+        typeof item.type !== "string" ||
+        !CARD_TYPES.has(item.type) ||
+        !Array.isArray(item.fields)
+      )
+        continue;
+      const fields = [];
+      for (const field of item.fields.slice(0, 16)) {
+        if (
+          !field ||
+          typeof field.name !== "string" ||
+          typeof field.value !== "string" ||
+          !CARD_FIELDS.has(field.name) ||
+          field.value.length > 2000
+        )
+          continue;
+        fields.push({ name: field.name, value: field.value });
+      }
+      if (fields.length) cards.push({ type: item.type, fields });
+    }
+    return cards;
+  };
   var encryptedSize = (size) => size + TAG * Math.max(1, Math.ceil(size / FILE_CHUNK));
   var chunkNonce = (iv, index) => {
     const nonce = iv.slice();
@@ -171,6 +211,8 @@ ${final ? 1 : 0}`);
     const payload = {
       content: typeof value.content === "string" ? readableSafetyNotice(value.content) : "",
     };
+    const cards = parseCards(value.embeds);
+    if (cards.length) payload.embeds = cards;
     if (Array.isArray(value.attachments))
       payload.attachments = value.attachments.flatMap(parseFile);
     if (Array.isArray(value.stickers))
@@ -2068,20 +2110,20 @@ ${publicKey}`;
       (((a & 15) + ((a >> 6) | ((a >> 3) & 8))) << 4) | ((b & 15) + ((b >> 6) | ((b >> 3) & 8)))
     );
   }
-  function writeHexToUInt8(buf, str2) {
-    const size = str2.length >> 1;
+  function writeHexToUInt8(buf, str) {
+    const size = str.length >> 1;
     for (let i = 0; i < size; i++) {
       const index = i << 1;
-      buf[i] = hexCharCodesToInt(str2.charCodeAt(index), str2.charCodeAt(index + 1));
+      buf[i] = hexCharCodesToInt(str.charCodeAt(index), str.charCodeAt(index + 1));
     }
   }
-  function hexStringEqualsUInt8(str2, buf) {
-    if (str2.length !== buf.length * 2) {
+  function hexStringEqualsUInt8(str, buf) {
+    if (str.length !== buf.length * 2) {
       return false;
     }
     for (let i = 0; i < buf.length; i++) {
       const strIndex = i << 1;
-      if (buf[i] !== hexCharCodesToInt(str2.charCodeAt(strIndex), str2.charCodeAt(strIndex + 1))) {
+      if (buf[i] !== hexCharCodesToInt(str.charCodeAt(strIndex), str.charCodeAt(strIndex + 1))) {
         return false;
       }
     }
@@ -2494,16 +2536,14 @@ ${publicKey}`;
   }
   function argon2Internal(options) {
     return __awaiter(this, undefined, undefined, function* () {
-      var _a2;
+      var _a;
       const { parallelism, iterations, hashLength } = options;
       const password = getUInt8Buffer(options.password);
       const salt = getUInt8Buffer(options.salt);
       const version = 19;
       const hashType = getHashType(options.hashType);
       const { memorySize } = options;
-      const secret = getUInt8Buffer(
-        (_a2 = options.secret) !== null && _a2 !== undefined ? _a2 : "",
-      );
+      const secret = getUInt8Buffer((_a = options.secret) !== null && _a !== undefined ? _a : "");
       const [argon2Interface, blake512] = yield Promise.all([
         WASMInterface(wasmJson$k, 1024),
         createBLAKE2b(512),
@@ -2557,7 +2597,7 @@ ${publicKey}`;
     });
   }
   var validateOptions$3 = (options) => {
-    var _a2;
+    var _a;
     if (!options || typeof options !== "object") {
       throw new Error("Invalid options parameter. It requires an object.");
     }
@@ -2575,9 +2615,7 @@ ${publicKey}`;
     if (options.salt.length < 8) {
       throw new Error("Salt should be at least 8 bytes long");
     }
-    options.secret = getUInt8Buffer(
-      (_a2 = options.secret) !== null && _a2 !== undefined ? _a2 : "",
-    );
+    options.secret = getUInt8Buffer((_a = options.secret) !== null && _a !== undefined ? _a : "");
     if (!Number.isInteger(options.iterations) || options.iterations < 1) {
       throw new Error("Iterations should be a positive number");
     }
@@ -2634,7 +2672,12 @@ ${publicKey}`;
   var mutex = new Mutex2();
 
   // client/e2ee/src/backup.ts
-  var PASSWORD_KDF = { name: "argon2id", memory: 65536, iterations: 3, parallelism: 1 };
+  var PASSWORD_KDF = {
+    name: "argon2id",
+    memory: 65536,
+    iterations: 3,
+    parallelism: 1,
+  };
   var RECOVERY_KDF = { name: "hkdf-sha256" };
   var ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
   var CODE_LENGTH = 32;
@@ -2801,7 +2844,12 @@ ${userId}`,
     try {
       tabStorage?.setItem(
         PENDING_KEY,
-        JSON.stringify({ userId, at: Date.now(), iv: toB64u(iv), ct: toB64u(ct) }),
+        JSON.stringify({
+          userId,
+          at: Date.now(),
+          iv: toB64u(iv),
+          ct: toB64u(ct),
+        }),
       );
     } catch {
       return;
@@ -4301,12 +4349,12 @@ ${sig}`;
       await this.refresh();
     }
     serialized(task) {
-      const run2 = this.queue.then(task);
-      this.queue = run2.then(
+      const run = this.queue.then(task);
+      this.queue = run.then(
         () => {},
         () => {},
       );
-      return run2;
+      return run;
     }
     exclusive(task) {
       return navigator.locks
@@ -4337,7 +4385,14 @@ ${sig}`;
         this.device.privateKey,
         prekeyMessage(this.device.deviceId, id, publicKey),
       );
-      return { id, publicKey, signature, keyPair, createdAt: Date.now(), retiredAt: null };
+      return {
+        id,
+        publicKey,
+        signature,
+        keyPair,
+        createdAt: Date.now(),
+        retiredAt: null,
+      };
     }
     currentPrekey() {
       return this.prekeys.reduce((a, b) => (b.id > a.id ? b : a));
@@ -4653,10 +4708,10 @@ ${digest}`;
         this.identity?.publicKey !== state.identity_key &&
         this.passwordValue()
       ) {
-        const password2 = this.passwordValue();
+        const password = this.passwordValue();
         identityJwk = await generateExportable("Ed25519");
         state = await this.api.request("post", "/users/@me/e2ee/reset", {
-          password: password2,
+          password,
           public_key: identityJwk.x,
         });
         await this.wipeLocal(false);
@@ -5192,7 +5247,7 @@ ${digest}`;
           throw new E2eeError("NO_DEVICES", "A member has no encryption keys yet", entry.userId);
         active.forEach((device) => targets.push({ userId: entry.userId, device }));
       }
-      if (!targets.some((t2) => t2.device.deviceId === this.device.deviceId)) {
+      if (!targets.some((t) => t.device.deviceId === this.device.deviceId)) {
         const current = this.currentPrekey();
         targets.push({
           userId: this.userId,
@@ -5554,6 +5609,10 @@ backup:${this.userId}`,
     };
     const show = (message, payload) => {
       ctx.attachments.apply(message, payload);
+      if (payload.embeds?.length && message.author?.system === true) {
+        message.embeds = payload.embeds;
+        message.content = "";
+      }
       payloads.set(message.id, payload);
     };
     const decryptOne = (message) => {
@@ -5906,7 +5965,11 @@ backup:${this.userId}`,
         const hit = cache.get(type);
         if (hit && hit.base === base) return hit.wrapped;
         let wrapped = base;
-        if (custom[type]) wrapped = { preload: () => null, dispatch: (data) => custom[type](data) };
+        if (custom[type])
+          wrapped = {
+            preload: () => null,
+            dispatch: (data) => custom[type](data),
+          };
         else if (base && (type === "MESSAGE_CREATE" || type === "MESSAGE_UPDATE")) {
           wrapped = {
             ...base,
@@ -6713,13 +6776,13 @@ ${approver}`;
       el.addEventListener("blur", hideTooltip);
       el.addEventListener("click", hideTooltip);
     };
-    const button = (label, variant, run2) => {
+    const button = (label, variant, run) => {
       const el = document.createElement("button");
       el.type = "button";
       el.className = "fe2ee-button";
       el.dataset.variant = variant;
       el.textContent = label;
-      el.addEventListener("click", run2);
+      el.addEventListener("click", run);
       return el;
     };
     addEventListener(
@@ -6827,7 +6890,7 @@ ${approver}`;
       el.innerHTML = `<h3>${escape(title)}</h3>${text ? `<p>${escape(text)}</p>` : ""}`;
       return el;
     };
-    const describe2 = (el, text) => {
+    const describe = (el, text) => {
       const p = document.createElement("p");
       p.textContent = text;
       el.append(p);
@@ -6921,14 +6984,14 @@ ${approver}`;
           try {
             await enableChannel(channelId);
             close();
-          } catch (failure2) {
-            const body2 = failure2?.body;
-            if (body2?.message === "E2EE_RECIPIENT_NO_DEVICES")
+          } catch (failure) {
+            const body = failure?.body;
+            if (body?.message === "E2EE_RECIPIENT_NO_DEVICES")
               return void (await notReady(
-                Array.isArray(body2.user_ids) ? body2.user_ids.map(String) : [],
+                Array.isArray(body.user_ids) ? body.user_ids.map(String) : [],
               ));
             error.textContent = t("Couldn't turn on encryption. {error}", {
-              error: errorText(failure2),
+              error: errorText(failure),
             });
             error.hidden = false;
             confirm.disabled = false;
@@ -7011,7 +7074,7 @@ ${approver}`;
     };
     const showReset = (onDone) =>
       dialog(t("Reset encryption?"), (body, actions, { close }) => {
-        describe2(
+        describe(
           body,
           engine.linked
             ? t(
@@ -7025,13 +7088,13 @@ ${approver}`;
                   "Only do this if your password doesn't unlock your keys and no other signed-in browser can approve this one.",
                 ),
         );
-        describe2(
+        describe(
           body,
           t(
             "You get new keys and can keep chatting, but none of your browsers can read the messages sent before the reset anymore. The people you talk to keep what they received.",
           ),
         );
-        describe2(
+        describe(
           body,
           t(
             "Your other browsers have to be approved again, and the people you talk to are told that your safety number changed.",
@@ -7104,7 +7167,7 @@ ${approver}`;
       dialog(t("Enter your password"), (body, actions, { el, close, setDismissable }) => {
         setDismissable(false);
         el.dataset.requiredPassword = "true";
-        describe2(body, t("Enter your account password to finish setting up this browser."));
+        describe(body, t("Enter your account password to finish setting up this browser."));
         const { wrap, input, setError } = field(
           t("Account password"),
           "password",
@@ -7180,7 +7243,7 @@ ${approver}`;
       if (!current || current.state === "failed") link.request().catch(() => {});
       dialog(t("Unlock encrypted messages"), (body, actions, { el, close }) => {
         const backup = engine.backup;
-        const intro = describe2(
+        const intro = describe(
           body,
           t(
             "This browser can't read your encrypted messages yet. Bring your keys over with one of these.",
@@ -7218,7 +7281,7 @@ ${approver}`;
         const lost = section(
           backup?.mode === "recovery" ? t("Lost your code?") : t("Can't unlock this browser?"),
         );
-        describe2(
+        describe(
           lost,
           t(
             "If you can't use any of these, reset encryption to keep chatting. Messages sent before the reset can't be read anymore.",
@@ -7268,8 +7331,8 @@ ${approver}`;
                       )
                     : t("Ask a browser where you're already signed in to approve this one.");
           const denied = state?.state === "denied";
-          for (const el2 of [intro, ...body.querySelectorAll(":scope > .fe2ee-section")])
-            el2.hidden = denied && el2 !== approval;
+          for (const el of [intro, ...body.querySelectorAll(":scope > .fe2ee-section")])
+            el.hidden = denied && el !== approval;
           notNow.textContent = denied ? t("Close") : t("Not now");
           if (engine.linked) {
             done();
@@ -7316,22 +7379,22 @@ ${approver}`;
         };
         approvals.set(prompt.requestId, finish);
         el.addEventListener("close", () => approvals.delete(prompt.requestId));
-        const run2 = async (action) => {
+        const run = async (action) => {
           approve.disabled = deny.disabled = true;
           error.hidden = true;
           try {
             await action();
             finish();
-          } catch (failure2) {
+          } catch (failure) {
             error.textContent = t("Couldn't answer that login. {error}", {
-              error: errorText(failure2),
+              error: errorText(failure),
             });
             error.hidden = false;
             approve.disabled = deny.disabled = false;
           }
         };
-        const approve = button(t("Approve login"), "primary", () => run2(prompt.approve));
-        const deny = button(t("Deny"), "secondary", () => run2(prompt.deny));
+        const approve = button(t("Approve login"), "primary", () => run(prompt.approve));
+        const deny = button(t("Deny"), "secondary", () => run(prompt.deny));
         actions.append(deny, approve);
         return el;
       });
@@ -7364,7 +7427,7 @@ ${approver}`;
     };
     const showBackupPassword = () =>
       dialog(t("Back up your encryption keys"), (body, actions, { close }) => {
-        describe2(
+        describe(
           body,
           t(
             "Your encryption keys only exist in this browser right now. Enter your account password to lock a backup of them with it, so any browser you sign in to can read your encrypted messages.",
@@ -7386,7 +7449,7 @@ ${approver}`;
       });
     const showRecoveryCode = () =>
       dialog(t("Use a recovery code"), (body, actions, { close, setDismissable }) => {
-        const intro = describe2(
+        const intro = describe(
           body,
           t(
             "We'll make a code that locks your key backup instead of your password. You'll need it to set up a new browser when no other device is around to approve it. We only show it once.",
@@ -7430,9 +7493,9 @@ ${approver}`;
             try {
               await engine.setBackupMode("recovery", code);
               close();
-            } catch (failure2) {
+            } catch (failure) {
               error.textContent = t("Couldn't switch to the recovery code. {error}", {
-                error: errorText(failure2),
+                error: errorText(failure),
               });
               error.hidden = false;
               saved.disabled = false;
@@ -7463,7 +7526,7 @@ ${approver}`;
     };
     const confirmRemove = (device, onDone) =>
       dialog(t("Remove this device?"), (body, actions, { close }) => {
-        describe2(
+        describe(
           body,
           t(
             "{name} is signed out and can't read new encrypted messages. To read them there again, it needs your recovery code, your password, or approval from another device.",
@@ -7481,8 +7544,8 @@ ${approver}`;
             await engine.removeDevice(device.device_id);
             close();
             onDone();
-          } catch (failure2) {
-            error.textContent = t("Couldn't remove it. {error}", { error: errorText(failure2) });
+          } catch (failure) {
+            error.textContent = t("Couldn't remove it. {error}", { error: errorText(failure) });
             error.hidden = false;
             confirm.disabled = false;
           }
@@ -7499,7 +7562,7 @@ ${approver}`;
         ),
       );
       const resetSection = section(t("Reset encryption"));
-      const resetText = describe2(resetSection, "");
+      const resetText = describe(resetSection, "");
       const list = document.createElement("div");
       list.className = "fe2ee-devices";
       const inviteError = document.createElement("p");
@@ -7536,7 +7599,7 @@ ${approver}`;
         document.createTextNode(t("Review safety number changes and new browser approvals")),
       );
       advanced.append(strictLabel);
-      describe2(
+      describe(
         advanced,
         t(
           "By default, this browser trusts this instance's signed-in sessions and key directory. The instance also stores an encrypted recovery copy of your backup secret, so your account password can recover this browser. Safety checks apply in this browser and do not erase a recovery copy already stored by another browser.",
@@ -7547,7 +7610,7 @@ ${approver}`;
         el.querySelectorAll(":scope > :not(h3)").forEach((child) => child.remove());
       const renderBrowser = () => {
         clear(browser);
-        describe2(
+        describe(
           browser,
           engine.linked
             ? t("Unlocked. This browser can read and send encrypted messages.")
@@ -7570,7 +7633,7 @@ ${approver}`;
         clear(backupSection);
         backupSection.dataset.mode = backup?.mode ?? "none";
         if (engine.backupNeedsPassword) {
-          describe2(
+          describe(
             backupSection,
             t(
               "Your keys aren't backed up yet, so new browsers can't read your encrypted messages. Enter your account password to back them up.",
@@ -7580,28 +7643,28 @@ ${approver}`;
           return;
         }
         if (!backup)
-          return void describe2(
+          return void describe(
             backupSection,
             t(
               "Your keys aren't backed up yet. Open the app on a browser that can read your messages to back them up.",
             ),
           );
         if (backup.mode === "recovery")
-          describe2(
+          describe(
             backupSection,
             t(
               "Your keys have a recovery-code backup. In trusted-server mode, your account password can also recover a browser through the instance; advanced safety mode uses your recovery code or another device.",
             ),
           );
         else if (backup.wrapped_secret)
-          describe2(
+          describe(
             backupSection,
             t(
               "Your keys are backed up and locked with your account password, so new browsers unlock as soon as you sign in. Someone with a copy of the server's database could try to guess a weak password offline.",
             ),
           );
         else
-          describe2(
+          describe(
             backupSection,
             t(
               "Your keys are backed up, but they aren't locked with your password yet. Open the app on a browser that can read your messages to finish the backup.",
@@ -7723,7 +7786,7 @@ ${approver}`;
       root.className = "fe2ee-page";
       container.replaceChildren(root);
       if (!engine.userId) {
-        describe2(root, failure ?? paused ?? t("Encryption is still starting up."));
+        describe(root, failure ?? paused ?? t("Encryption is still starting up."));
         return () => {};
       }
       const stop = buildSettings(root);
@@ -7839,8 +7902,7 @@ ${approver}`;
       if (!channelId) return existing?.remove();
       const toolbars = [...document.querySelectorAll('[class*="toolbar__"]')];
       const toolbar =
-        toolbars.find((t2) => t2.parentElement?.className.includes("upperContainer")) ??
-        toolbars[0];
+        toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
       if (!toolbar) return;
       const on = engine.isEncrypted(channelId);
       const list = members?.channelId === channelId ? members.list : [];
@@ -7942,8 +8004,8 @@ ${approver}`;
       bar.setAttribute("role", notice.tone === "danger" ? "alert" : "status");
       bar.innerHTML = `${svg(notice.tone === "info" ? LOCK_PATH : OPEN_LOCK_PATH)}<p>${escape(notice.text)}</p>`;
       if (notice.action) {
-        const { run: run2 } = notice.action;
-        bar.append(button(notice.action.label, "secondary", run2));
+        const { run } = notice.action;
+        bar.append(button(notice.action.label, "secondary", run));
       }
     };
     const refresh = () => {

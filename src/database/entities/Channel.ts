@@ -213,10 +213,6 @@ export class Channel extends BaseClass {
     @Column({ type: "timestamp with time zone", nullable: true })
     e2ee_enabled_at?: Date | null;
 
-    // set when a chat is switched to plain messages (the official account's DMs, so safety cards can be drawn), so default encryption leaves it alone
-    @Column({ type: "timestamp with time zone", nullable: true })
-    e2ee_disabled_at?: Date | null;
-
     @Column({ type: "jsonb", nullable: true })
     default_reaction_emoji?: DefaultReaction | null;
 
@@ -345,9 +341,9 @@ export class Channel extends BaseClass {
     }
 
     static async ensureDefaultPrivateEncryption(channel: Channel, actor_id?: string) {
-        if (![ChannelType.DM, ChannelType.GROUP_DM].includes(channel.type) || channel.e2ee_enabled_at || channel.e2ee_disabled_at) return;
+        if (![ChannelType.DM, ChannelType.GROUP_DM].includes(channel.type) || channel.e2ee_enabled_at) return;
         const enabled_at = new Date();
-        const result = await Channel.update({ id: channel.id, e2ee_enabled_at: IsNull(), e2ee_disabled_at: IsNull() }, { e2ee_enabled_at: enabled_at });
+        const result = await Channel.update({ id: channel.id, e2ee_enabled_at: IsNull() }, { e2ee_enabled_at: enabled_at });
         if (!result.affected) {
             channel.e2ee_enabled_at = (await Channel.findOneByOrFail({ id: channel.id })).e2ee_enabled_at;
             return;

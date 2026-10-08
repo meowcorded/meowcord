@@ -22,6 +22,18 @@
   var FILE_CHUNK = 64 * 1024;
   var FILE_PREFIX = "/e2ee/attachments/";
   var TAG = 16;
+  var CARD_TYPES = new Set(["safety_system_notification", "safety_policy_notice"]);
+  var CARD_FIELDS = new Set([
+    "icon_type",
+    "theme",
+    "header",
+    "body",
+    "timestamp",
+    "ctas",
+    "learn_more_link",
+    "classification_id",
+    "incident_time",
+  ]);
   var chunkNonce = (iv, index) => {
     const nonce = iv.slice();
     const view = new DataView(nonce.buffer);
@@ -129,7 +141,7 @@ ${final ? 1 : 0}`);
         clientId,
       );
       posters.set(path, pending);
-      pending.then((image2) => image2 || posters.delete(path));
+      pending.then((image) => image || posters.delete(path));
     }
     const image = await pending;
     if (!image) return missing();

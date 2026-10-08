@@ -43,14 +43,42 @@ const brandNode = (node: unknown[], name: string): unknown[] => {
     return node;
 };
 
+const helpConfigured = () => {
+    const url = (window as any).GLOBAL_ENV?.HELP_URL;
+    return typeof url === "string" && /^https?:\/\//.test(url);
+};
+
+// Messages that end in "... here: <help article link>". Without a help center the link is removed, which would leave
+// the sentence hanging, so these are reworded instead.
+const NO_HELP_LINK: [RegExp, string][] = [
+    [
+        /^Your message could not be delivered\.\n\nYou can see the full list of reasons here: $/,
+        "Your message could not be delivered.\n\nThis usually means you don't share a server with them, or they only accept direct messages from friends.",
+    ],
+    [
+        /^(Your message could not be delivered\. Send a friend request first and start the conversation once they.ve accepted\.)\n\nHere is the full list of reasons why your message could not be delivered: $/,
+        "$1",
+    ],
+    [/^(Your message could not be delivered because this message contains a link blocked by Discord)\. You can learn more here: $/, "$1"],
+];
+
+const withoutHelpLink = (list: unknown[]): unknown[] => {
+    const at = list.findIndex((node) => Array.isArray(node) && node[0] === 1 && node[1] === "helpUrl");
+    const before = list[at - 1];
+    if (at < 1 || typeof before !== "string") return list;
+    for (const [pattern, text] of NO_HELP_LINK) if (pattern.test(before)) return [...list.slice(0, at - 1), before.replace(pattern, text), ...list.slice(at + 1)];
+    return list;
+};
+
 export const brandMessages = (messages: Record<string, unknown>) => {
     if (!messages || typeof messages !== "object" || Array.isArray(messages)) return messages;
     const name = String((window as any).GLOBAL_ENV?.INSTANCE_NAME || "Fosscord");
     const qrLabel = JSON.stringify(messages["SzYj9v"]);
+    const noHelp = !helpConfigured();
     for (const key in messages) {
         const value = messages[key];
         if (typeof value === "string") messages[key] = brandText(value, name);
-        else if (Array.isArray(value)) messages[key] = brandList(value, name);
+        else if (Array.isArray(value)) messages[key] = brandList(noHelp ? withoutHelpLink(value) : value, name);
     }
     const qr = messages["Qq+A6i"];
     if (Array.isArray(qr) && QR_LOGIN.test(JSON.stringify(qr)))

@@ -74,7 +74,8 @@ export interface RawMessage {
     channel_id: string;
     content?: string;
     nonce?: string | number | null;
-    author?: { id: string };
+    author?: { id: string; system?: boolean };
+    embeds?: unknown[];
     flags?: number;
     attachments?: RawAttachment[];
     sticker_items?: unknown[];

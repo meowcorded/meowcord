@@ -29,9 +29,15 @@ export interface SystemFileMeta {
     key: string;
     iv: string;
 }
+// a safety card the client draws after decrypting; only these embed types are ever put in a payload
+export interface SystemCardEmbed {
+    type: "safety_system_notification" | "safety_policy_notice";
+    fields: { name: string; value: string }[];
+}
 export interface SystemPayload {
     content: string;
     attachments?: SystemFileMeta[];
+    embeds?: SystemCardEmbed[];
 }
 export interface EncryptedSystemFile {
     fieldname: string;

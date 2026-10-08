@@ -95,6 +95,12 @@ export const createHooks = (ctx: HookContext) => {
 
     const show = (message: RawMessage, payload: Payload) => {
         ctx.attachments.apply(message, payload);
+        // the official account's safety notices travel inside the encrypted payload; the native card draws from an embed
+        // on the message, so it is rebuilt here. Anybody else's embeds are ignored, so a user can't fake a notice.
+        if (payload.embeds?.length && message.author?.system === true) {
+            message.embeds = payload.embeds;
+            message.content = "";
+        }
         payloads.set(message.id, payload);
     };
 

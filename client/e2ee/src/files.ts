@@ -27,11 +27,36 @@ export interface StickerMeta {
     format_type: number;
 }
 
+export interface SafetyCard {
+    type: "safety_system_notification" | "safety_policy_notice";
+    fields: { name: string; value: string }[];
+}
+
 export interface Payload {
     content: string;
     attachments?: FileMeta[];
     stickers?: StickerMeta[];
+    embeds?: SafetyCard[];
 }
+
+const CARD_TYPES = new Set(["safety_system_notification", "safety_policy_notice"]);
+const CARD_FIELDS = new Set(["icon_type", "theme", "header", "body", "timestamp", "ctas", "learn_more_link", "classification_id", "incident_time"]);
+
+// A card is only drawn for the official account's messages (hooks.ts), and only these fields are ever read from it.
+export const parseCards = (raw: unknown): SafetyCard[] => {
+    if (!Array.isArray(raw)) return [];
+    const cards: SafetyCard[] = [];
+    for (const item of raw.slice(0, 1) as Record<string, unknown>[]) {
+        if (!item || typeof item !== "object" || typeof item.type !== "string" || !CARD_TYPES.has(item.type) || !Array.isArray(item.fields)) continue;
+        const fields: SafetyCard["fields"] = [];
+        for (const field of item.fields.slice(0, 16) as Record<string, unknown>[]) {
+            if (!field || typeof field.name !== "string" || typeof field.value !== "string" || !CARD_FIELDS.has(field.name) || field.value.length > 2000) continue;
+            fields.push({ name: field.name, value: field.value });
+        }
+        if (fields.length) cards.push({ type: item.type as SafetyCard["type"], fields });
+    }
+    return cards;
+};
 
 export interface FileEntry {
     url: string;
@@ -125,6 +150,8 @@ export const parsePayload = (raw: unknown): Payload => {
     const payload: Payload = {
         content: typeof value.content === "string" ? readableSafetyNotice(value.content) : "",
     };
+    const cards = parseCards(value.embeds);
+    if (cards.length) payload.embeds = cards;
     if (Array.isArray(value.attachments)) payload.attachments = value.attachments.flatMap(parseFile);
     if (Array.isArray(value.stickers))
         payload.stickers = value.stickers.flatMap((item: Record<string, unknown> | null) => {
