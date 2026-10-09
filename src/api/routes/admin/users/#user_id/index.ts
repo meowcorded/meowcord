@@ -3,7 +3,7 @@ import { Request, Response, Router } from "express";
 import { HTTPError } from "lambert-server/HTTPError";
 import { route } from "@spacebar/api/middlewares";
 import { Badge, Guild, InstanceBan, Member, Session, User } from "@spacebar/database";
-import { broadcastUserUpdate, Collectibles, CollectibleItemType, emitEvent, handleFile, Rights, UserUpdateEvent, Event } from "@spacebar/util";
+import { broadcastUserUpdate, Collectibles, CollectibleItemType, emitEvent, emitRequiredAction, handleFile, Rights, UserUpdateEvent, Event } from "@spacebar/util";
 import { AccountStandingState, AdminUserUpdateSchema, PrivateUserProjection } from "@spacebar/schemas";
 import { In, Not } from "typeorm";
 import { Pomelo, resolveProfileCollectibles, currentStanding, hasAdminPanelAccess, notifyStandingDrop, syncStaffBadge } from "@spacebar/api/util";
@@ -225,6 +225,7 @@ router.patch(
             data: updated,
         } satisfies UserUpdateEvent);
 
+        if (changed.has("verified")) await emitRequiredAction(user.id);
         if (changed.size) await broadcastUserUpdate(user.id);
         res.json(pickAdminUser(await loadUser(user.id)));
     },

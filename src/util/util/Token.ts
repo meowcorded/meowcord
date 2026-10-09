@@ -78,7 +78,7 @@ export const checkToken = (
             const [user, session, banned] = await Promise.all([
                 User.findOne({
                     where: { id: decoded.id },
-                    select: OrmUtils.keysToObject([...(opts?.select || []), "id", "bot", "disabled", "deleted", "account_standing", "rights", "data", "flags"]), // TODO: clean up
+                    select: OrmUtils.keysToObject([...(opts?.select || []), "id", "bot", "disabled", "deleted", "account_standing", "rights", "data", "flags", "verified"]), // TODO: clean up
                     relations: !opts?.relations ? undefined : OrmUtils.keysToObject(opts.relations), // TODO: clean up
                 }),
                 decoded.did ? Session.findOne({ where: { session_id: decoded.did, user_id: decoded.id } }) : undefined,

@@ -1,5 +1,5 @@
 export interface CaptchaConfigResponse {
-    service: "recaptcha" | "hcaptcha" | "cap" | null;
+    service: "cap" | null;
     sitekey: string | null;
     endpoint: string | null;
     register: boolean;

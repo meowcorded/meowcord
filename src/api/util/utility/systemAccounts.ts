@@ -3,7 +3,7 @@ import { Config, Rights, Snowflake, uploadMessageFiles } from "@spacebar/util";
 import { ChannelType, Embed, Reaction, UserFlags } from "@spacebar/schemas";
 import { MessageOptionAttachment } from "@spacebar/util/dtos/MessageOptions";
 import { sendMessage } from "../handlers/Message";
-import { encryptSystemFiles, encryptSystemPayload, EncryptedSystemFile } from "./systemEncryption";
+import { encryptSystemFiles, encryptSystemPayload, EncryptedSystemFile, SystemCardEmbed } from "./systemEncryption";
 import { E2EE_FALLBACK_CONTENT } from "./e2ee";
 import { systemEmbedText } from "./safetyMessageText";
 import { reopenDirectMessage } from "../handlers/DirectMessage";
@@ -115,6 +115,9 @@ export const isSystemAccount = async (user_id: string) =>
 
 type SystemDMFile = Parameters<typeof uploadMessageFiles>[1][number];
 
+const SAFETY_CARD_TYPES = ["safety_system_notification", "safety_policy_notice"];
+const isSafetyCard = (embed: Embed) => SAFETY_CARD_TYPES.includes(String(embed.type));
+
 export interface SystemDMMessage {
     content?: string;
     embeds?: Embed[];
@@ -156,9 +159,14 @@ export async function sendEncryptedSystemDM(sender: User, recipientId: string, m
     await Channel.ensureDefaultPrivateEncryption(channel, sender.id);
     const files = message.encryptedFiles ?? encryptSystemFiles(message.files ?? []);
     const text = [message.content, ...(message.embeds ?? []).flatMap(systemEmbedText)].filter(Boolean).join("\n\n");
+    const cards = (message.embeds ?? []).filter(isSafetyCard).map((embed) => ({
+        type: String(embed.type) as SystemCardEmbed["type"],
+        fields: (embed.fields ?? []).map((field) => ({ name: field.name, value: field.value })),
+    }));
     const encrypted = await encryptSystemPayload(sender, [recipientId], channel.id, id, {
         content: text,
         ...(files.length ? { attachments: files.map((file) => file.meta) } : {}),
+        ...(cards.length ? { embeds: cards } : {}),
     });
     await reopenDirectMessage(channel, sender.id, { neverMessageRequest: true });
     const attachments = files.length ? await uploadMessageFiles<MessageOptionAttachment>(`/attachments/${channel.id}/${id}`, files) : undefined;

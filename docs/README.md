@@ -13,6 +13,7 @@
 - [activities.md](features/activities.md): embedded activities, their hosting and API.
 - [announcements.md](features/announcements.md): encrypted announcements from the official account.
 - [e2ee.md](features/e2ee.md): end-to-end encrypted DMs, key backup and recovery.
+- [homepage.md](features/homepage.md): the instance homepage at `/` and the settings that change it.
 - [identity-moderation.md](features/identity-moderation.md): blocked words in usernames, display names and nicknames.
 - [loading-screen.md](features/loading-screen.md): custom loading tips and loading animation.
 - [notifications.md](features/notifications.md): notification settings, mention counts, read states and Web Push.

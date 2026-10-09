@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const ts = require("typescript");
-const loadEmail = () => {
+const loadEmail = (brand = {}) => {
     const logs = [];
     const files = [];
     const module = { exports: {} };
@@ -18,7 +18,11 @@ const loadEmail = () => {
         "node:path": path,
         "../../../database/entities": {},
         "../Config": {
-            Config: { get: () => ({ email: {}, general: { instanceName: "Local test instance" } }) },
+            Config: { get: () => ({ email: {}, general: { instanceName: "Local test instance", serverName: "https://instance.invalid" }, api: {} }) },
+        },
+        "../Branding": {
+            emailImageUrls: () => ({ icon: "/static/email/icon.png?v=5e6f7a8b", logo: brand.logo ?? null }),
+            instanceName: () => brand.name ?? "Local test instance",
         },
         "node:crypto": {},
         jsonwebtoken: {},
@@ -40,6 +44,7 @@ const loadEmail = () => {
             module,
             exports: module.exports,
             __dirname: path.resolve("src/util/util/email"),
+            URL,
             console: { log: (value) => logs.push(value) },
             require: (name) => {
                 assert.ok(name in imports, name);
@@ -80,4 +85,28 @@ test("configured mail transport still delivers action link in message without lo
     assert.ok(messages[0].html.includes("fixture-secret"));
     assert.ok(messages[0].text.includes("fixture-secret"));
     assert.equal(logs.length, 0);
+});
+test("html templates carry the instance wordmark placeholder and no fixed logo", () => {
+    const folder = path.join("assets", "email_templates");
+    const templates = fs.readdirSync(folder).filter((name) => name.endsWith(".html"));
+    assert.equal(templates.length, 5);
+    for (const name of templates) {
+        const template = fs.readFileSync(path.join(folder, name), "utf8");
+        assert.equal(template.split("{instanceWordmark}").length, 2, name);
+        assert.ok(!/<img|spacebar/i.test(template), name);
+    }
+});
+test("configured wordmark logo heads the email with the instance name as alt text", () => {
+    const { Email } = loadEmail({ logo: "/static/email/wordmark.png?v=1a2b3c4d", name: 'Cats & "Dogs"' });
+    const html = Email.doReplacements("{instanceWordmark}", { id: "fixture-user" });
+    assert.match(html, /^<img src="https:\/\/instance\.invalid\/static\/email\/wordmark\.png\?v=1a2b3c4d" alt="Cats &#38; &#34;Dogs&#34;" /);
+    assert.ok(!html.includes("icon.png"));
+    assert.ok(!html.includes("<span"));
+});
+test("without a wordmark logo the email is headed by the instance icon and name", () => {
+    const { Email } = loadEmail({ name: "<Cats>" });
+    const html = Email.doReplacements("{instanceWordmark}", { id: "fixture-user" });
+    assert.ok(html.includes('<img src="https://instance.invalid/static/email/icon.png?v=5e6f7a8b" alt=""'));
+    assert.match(html, /<span [^>]*>&#60;Cats&#62;<\/span>/);
+    assert.ok(!html.includes("wordmark.png"));
 });

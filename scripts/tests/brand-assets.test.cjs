@@ -289,6 +289,48 @@ function pngHeader(width, height) {
     return data;
 }
 
+test("email images pass PNG sources through and convert other formats to bounded PNGs", async () => {
+    const sharp = require("sharp");
+    const h = brandingFixture();
+    const dimensions = (png) => [png.readUInt32BE(16), png.readUInt32BE(20)];
+    const render = async (kind, data) => {
+        const pending = h.branding.emailImagePng(kind);
+        await turn();
+        h.downloads.pop().resolve(data && { data, type: "application/octet-stream" });
+        return pending;
+    };
+    assert.equal(await h.branding.emailImagePng("wordmark"), null);
+    assert.equal(h.downloads.length, 0);
+    assert.equal(h.branding.emailImageUrls().logo, null);
+    assert.match(h.branding.emailImageUrls().icon, /^\/static\/email\/icon\.png\?v=[0-9a-f]{8}$/);
+
+    const png = pngHeader(4096, 4096);
+    assert.equal(await render("icon", png), png);
+
+    h.client.logo = "https://owned.invalid/wordmark.svg";
+    const vector = await render("wordmark", Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="56" height="18"><rect width="56" height="18" fill="#7B5CFF"/></svg>'));
+    assert.equal(vector.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.deepEqual(dimensions(vector), [800, 257]);
+    assert.match(h.branding.emailImageUrls().logo, /^\/static\/email\/wordmark\.png\?v=[0-9a-f]{8}$/);
+
+    h.client.logo = "https://owned.invalid/wordmark.jpg";
+    const large = await sharp({ create: { width: 2000, height: 500, channels: 3, background: "#7B5CFF" } })
+        .jpeg()
+        .toBuffer();
+    assert.deepEqual(dimensions(await render("wordmark", large)), [800, 200]);
+
+    h.client.icon = "https://owned.invalid/icon.webp";
+    const small = await sharp({ create: { width: 40, height: 40, channels: 4, background: "#7B5CFF" } })
+        .webp()
+        .toBuffer();
+    assert.deepEqual(dimensions(await render("icon", small)), [40, 40]);
+
+    h.client.icon = "https://owned.invalid/broken";
+    assert.equal(await render("icon", Buffer.from("not an image")), null);
+    h.client.icon = "https://owned.invalid/missing";
+    assert.equal(await render("icon", null), null);
+});
+
 test("branding checks source dimensions before decoder admission and preserves pixel boundaries", () => {
     for (const [width, height] of [
         [512, 512],

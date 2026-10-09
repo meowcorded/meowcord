@@ -120,7 +120,7 @@ test("malformed proofs and wrong registration scope fail without token rows", op
 });
 
 test("required signup challenges survive disabled, absent and third-party captcha configuration", options, async () => {
-    const configurations = [{ enabled: false }, {}, { enabled: true, service: "hcaptcha", sitekey: "fixture", secret: "fixture" }];
+    const configurations = [{ enabled: false }, {}, { enabled: true, sitekey: "fixture", secret: "fixture" }];
     for (const value of configurations) {
         cfg.security.captcha = value;
         assert.equal(captcha.registrationCapEndpoint(), "/api/v9/auth/cap/");

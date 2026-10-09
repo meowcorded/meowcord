@@ -524,6 +524,11 @@ export interface UserConnectionsUpdateEvent extends Event {
     event: "USER_CONNECTIONS_UPDATE";
 }
 
+export interface UserRequiredActionUpdateEvent extends Event {
+    event: "USER_REQUIRED_ACTION_UPDATE";
+    data: { required_action: "REQUIRE_VERIFIED_EMAIL" | null };
+}
+
 export interface VoiceStateUpdateEvent extends Event {
     event: "VOICE_STATE_UPDATE";
     data: Omit<PublicVoiceState, "guild_id" | "channel_id"> & {
@@ -872,6 +877,7 @@ export type EventData =
     | UserUpdateEvent
     | UserDeleteEvent
     | UserConnectionsUpdateEvent
+    | UserRequiredActionUpdateEvent
     | VoiceStateUpdateEvent
     | VoiceServerUpdateEvent
     | WebhooksUpdateEvent
@@ -935,6 +941,7 @@ export enum EVENTEnum {
     UserUpdate = "USER_UPDATE",
     UserDelete = "USER_DELETE",
     UserConnectionsUpdate = "USER_CONNECTIONS_UPDATE",
+    UserRequiredActionUpdate = "USER_REQUIRED_ACTION_UPDATE",
     WebhooksUpdate = "WEBHOOKS_UPDATE",
     InteractionCreate = "INTERACTION_CREATE",
     InteractionSuccess = "INTERACTION_SUCCESS",
@@ -1007,6 +1014,7 @@ export type EVENT =
     | "USER_UPDATE"
     | "USER_DELETE"
     | "USER_CONNECTIONS_UPDATE"
+    | "USER_REQUIRED_ACTION_UPDATE"
     | "USER_NOTE_UPDATE"
     | "SAVED_MESSAGE_CREATE"
     | "SAVED_MESSAGE_DELETE"

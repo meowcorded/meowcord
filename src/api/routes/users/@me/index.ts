@@ -11,6 +11,7 @@ import {
     Config,
     Email,
     emitEvent,
+    emitRequiredAction,
     FieldErrors,
     generateToken,
     handleFile,
@@ -56,6 +57,7 @@ router.patch(
     "/",
     route({
         requestBody: "UserModifySchema",
+        allowUnverified: true,
         responses: {
             200: {
                 body: "UserUpdateResponse",
@@ -321,6 +323,7 @@ router.patch(
         if (body.username !== undefined || body.global_name !== undefined)
             await checkProfileAcrossGuilds(req.user_id).catch((e) => console.error("[AutoMod] profile check failed", e));
 
+        if (emailChanged) await emitRequiredAction(req.user_id);
         if (emailChanged && updated.email)
             await Email.sendVerifyEmail(updated, updated.email).catch((e) => console.error(`[Email] failed to send verification email to ${updated.id}`, e));
 

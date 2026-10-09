@@ -31,13 +31,11 @@ test("required core signup challenges survive incomplete optional configuration 
         {},
         { enabled: false },
         {
-            service: "cap",
             capMode: "core",
             instance: "https://stale.invalid",
             sitekey: "stale",
             secret: "stale",
         },
-        { service: "hcaptcha", enabled: true },
     ]) {
         const api = fixture(config, () => {
             throw Error("Core must stay local");
@@ -50,10 +48,9 @@ test("required core signup challenges survive incomplete optional configuration 
     }
 });
 test("incomplete standalone signup configuration fails closed before network or token use", async () => {
-    for (const missing of ["instance", "sitekey", "secret", "service"]) {
+    for (const missing of ["instance", "sitekey", "secret"]) {
         const config = {
             capMode: "standalone",
-            service: "cap",
             instance: "http://127.0.0.1",
             sitekey: "fixture",
             secret: "fixture",
@@ -79,7 +76,6 @@ test("standalone verifies required signup with optional captcha disabled and enc
     try {
         const api = fixture({
             capMode: "standalone",
-            service: "cap",
             enabled: false,
             instance: `http://127.0.0.1:${server.address().port}///`,
             sitekey: "key/with space",
@@ -111,7 +107,6 @@ test("standalone provider failures remain required verification challenges", asy
         const api = fixture(
             {
                 capMode: "standalone",
-                service: "cap",
                 instance: "http://127.0.0.1",
                 sitekey: "fixture",
                 secret: "synthetic",

@@ -1,6 +1,7 @@
 export * from "./ApiError";
 export * from "./BitField";
 export * from "./Branding";
+export * from "./HomePage";
 export * from "./DefaultAvatars";
 //export * from "./Categories";
 export * from "./cdn";
@@ -19,6 +20,7 @@ export * from "./networking";
 export * from "./Permissions";
 export * from "./ipc/RabbitMQ";
 export * from "./Regex";
+export * from "./RequiredAction";
 export * from "./Rights";
 export * from "./Snowflake";
 export * from "./Token";

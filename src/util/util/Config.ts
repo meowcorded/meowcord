@@ -47,6 +47,7 @@ export class Config {
         config = OrmUtils.mergeDeep({}, { ...new ConfigValue() }, config);
         if (Array.isArray(identityBlockedTerms)) config.user.identityBlockedTerms = [...identityBlockedTerms];
         replaceStaleDefaults(config);
+        delete (config.security?.captcha as { service?: unknown } | undefined)?.service;
 
         // TODO: factor this out someday
         if (process.env.CDN_SIGNATURE_PATH) config.security.cdnSignatureKey = await Config.readSecret("CDN_SIGNATURE_PATH");

@@ -12,6 +12,7 @@ router.post(
         responses: {
             204: {},
         },
+        allowUnverified: true,
     }),
     async (req: Request, res: Response) => {
         const { provider, token } = req.body as { provider?: string | null; token?: string | null };

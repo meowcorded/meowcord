@@ -10,11 +10,11 @@ function fixture() {
         client: {},
         register: { email: {}, dateOfBirth: {}, password: {} },
         login: {},
+        defaults: { user: {} },
         passwordReset: {},
         security: {
             captcha: {
                 capMode: "core",
-                service: "cap",
                 enabled: false,
                 instance: "https://stored.example.test",
                 sitekey: "stored-key",
@@ -76,7 +76,7 @@ function fixture() {
 test("core selection preserves stored credentials while selecting embedded verification", async () => {
     const { patch, writes } = fixture();
     await patch({
-        captcha: { capMode: "core", service: "cap", secret: "" },
+        captcha: { capMode: "core", secret: "" },
         limits: { channel: { allowSlowmodeBypass: false } },
         e2ee: { trustServerByDefault: true },
     });
@@ -91,7 +91,7 @@ test("admin rejects incomplete standalone before persisting any settings", async
     for (const missing of ["instance", "sitekey", "secret"]) {
         const { cfg, patch, writes } = fixture();
         delete cfg.security.captcha[missing];
-        await assert.rejects(patch({ captcha: { capMode: "standalone", service: "cap" } }), (error) => error.status === 400 && /requires a server URL/.test(error.message));
+        await assert.rejects(patch({ captcha: { capMode: "standalone" } }), (error) => error.status === 400 && /requires a server URL/.test(error.message));
         assert.equal(writes.length, 0);
     }
 });
@@ -99,14 +99,13 @@ test("admin rejects incomplete standalone before persisting any settings", async
 test("admin rejects unsafe standalone URL and preserves masked blank secret", async () => {
     for (const instance of ["javascript:alert(1)", "https://user:password@cap.example.test", "https://cap.example.test?secret=value", "https://cap.example.test/#fragment"]) {
         const { patch, writes } = fixture();
-        await assert.rejects(patch({ captcha: { capMode: "standalone", service: "cap", instance } }), (error) => error.status === 400);
+        await assert.rejects(patch({ captcha: { capMode: "standalone", instance } }), (error) => error.status === 400);
         assert.equal(writes.length, 0);
     }
     const { patch, writes } = fixture();
     await patch({
         captcha: {
             capMode: "standalone",
-            service: "cap",
             instance: "http://127.0.0.1:3000/",
             secret: "",
         },
@@ -143,7 +142,7 @@ test("generated admin schema accepts Cap mode and slowmode booleans while reject
     });
     assert.equal(
         validate({
-            captcha: { capMode: "core", service: "cap" },
+            captcha: { capMode: "core" },
             limits: { channel: { allowSlowmodeBypass: false } },
             e2ee: { trustServerByDefault: true },
         }),

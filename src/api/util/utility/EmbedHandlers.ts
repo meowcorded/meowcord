@@ -163,10 +163,21 @@ const KLIPY_FETCH: RequestInit = {
     headers: { "user-agent": "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)" },
 };
 
+// klipy.com answers the public proxy with a Cloudflare challenge, so its pages are read from this server directly (the same
+// way the /klipy/ media route already reaches its CDN). Only the page is read; the media still goes through the proxy.
+const fetchKlipyPage = async (url: URL) => {
+    if (!Config.get().externalRequests.thirdParty) return null;
+    try {
+        return await fetchPublicUrl(url.href, { ...getDefaultFetchOptions(), ...KLIPY_FETCH }, 0, { maxBytes: 2 * 1024 * 1024, timeoutMs: 10000, allowExternal: true });
+    } catch {
+        return null;
+    }
+};
+
 const gifvHandler =
-    (name: string, providerUrl: string, fetchOpts?: RequestInit) =>
+    (name: string, providerUrl: string, fetchOpts?: RequestInit, fetchPage?: (url: URL) => Promise<Response | null>) =>
     async (url: URL): Promise<Embed | null> => {
-        const response = await doFetch(url, fetchOpts);
+        const response = await (fetchPage ? fetchPage(url) : doFetch(url, fetchOpts));
         if (!response) return null;
         if (!response.headers.get("content-type")?.includes("html")) return genericImageHandler(url);
         const metas = getMetaDescriptions(await response.text());
@@ -214,6 +225,47 @@ const genericImageHandler = async (url: URL): Promise<Embed | null> => {
         type: EmbedType.image,
         thumbnail: image,
     };
+};
+
+// The watch page is fetched through a public proxy, and from there YouTube answers with its generic home page. The oEmbed
+// endpoint answers with JSON whatever the caller's address, so videos are built from that.
+const youtubeVideoId = (url: URL) => {
+    const host = url.hostname.replace(/^(?:www|m|music)\./, "");
+    let id: string | null | undefined = null;
+    if (host === "youtu.be") id = url.pathname.split("/")[1];
+    else if (host === "youtube.com") id = url.pathname === "/watch" ? url.searchParams.get("v") : url.pathname.match(/^\/(?:shorts|live|embed|v)\/([\w-]{11})/)?.[1];
+    return id && /^[\w-]{11}$/.test(id) ? id : null;
+};
+
+const youtubeVideoEmbed = async (url: URL): Promise<Embed | null> => {
+    const id = youtubeVideoId(url);
+    if (!id) return null;
+    try {
+        const response = await fetchEmbedUrl(
+            `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}`,
+            getDefaultFetchOptions(),
+        );
+        if (!response.ok) return null;
+        const info = (await response.json()) as { title?: string; author_name?: string; author_url?: string; thumbnail_url?: string };
+        if (!info.title) return null;
+        // the full-size thumbnail doesn't exist for every video; the one in the oEmbed answer always does
+        const full = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+        const hasFull = await fetchEmbedUrl(full, { ...getDefaultFetchOptions(), method: "HEAD" })
+            .then((head) => head.ok)
+            .catch(() => false);
+        return {
+            url: url.href,
+            type: EmbedType.video,
+            title: info.title,
+            provider: { name: "YouTube", url: "https://www.youtube.com" },
+            author: info.author_name ? { name: info.author_name, url: info.author_url } : undefined,
+            color: 16711680,
+            thumbnail: hasFull ? makeEmbedImage(full, 1280, 720) : makeEmbedImage(info.thumbnail_url, 480, 360),
+            video: { url: `https://www.youtube.com/embed/${id}`, width: 1280, height: 720 },
+        };
+    } catch {
+        return null;
+    }
 };
 
 export const EmbedHandlers: {
@@ -280,8 +332,8 @@ export const EmbedHandlers: {
     "media.tenor.com": genericImageHandler,
     "media1.tenor.com": genericImageHandler,
 
-    "klipy.com": gifvHandler("KLIPY", "https://klipy.com/", KLIPY_FETCH),
-    "www.klipy.com": gifvHandler("KLIPY", "https://klipy.com/", KLIPY_FETCH),
+    "klipy.com": gifvHandler("KLIPY", "https://klipy.com/", KLIPY_FETCH, fetchKlipyPage),
+    "www.klipy.com": gifvHandler("KLIPY", "https://klipy.com/", KLIPY_FETCH, fetchKlipyPage),
     "static.klipy.com": genericImageHandler,
     "static2.klipy.com": genericImageHandler,
 
@@ -524,6 +576,8 @@ export const EmbedHandlers: {
     "youtube.com": (url) => EmbedHandlers["www.youtube.com"](url),
     "music.youtube.com": (url) => EmbedHandlers["www.youtube.com"](url),
     "www.youtube.com": async (url: URL): Promise<Embed | null> => {
+        const video = await youtubeVideoEmbed(url);
+        if (video) return video;
         const response = await doFetch(url, {
             headers: {
                 cookie: Config.get().embeds.youtube.cookie ?? "CONSENT=PENDING+999; hl=en",

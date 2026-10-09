@@ -485,7 +485,7 @@ func cleanupPeer(p *Peer) {
 func main() {
 	// parse command line args
 	webrtcPort := flag.Int("port", 5000, "WebRTC UDP port")
-	webrtcPublicIp := flag.String("ip", "[IP_ADDRESS]", "WebRTC public IP")
+	webrtcPublicIp := flag.String("ip", "[IP_ADDRESS]", "WebRTC public IPv4 address, or a host name that resolves to one")
 	ipcPath := flag.String("ipc", "/tmp/sfu-ipc.sock", "IPC unix socket path")
 	verbose := flag.Bool("verbose", false, "Enable pion debug logging")
 	flag.Float64Var(&incomingDropPercent, "drop-in", 0, "Percentage of publisher RTP packets to drop on arrival, for testing loss recovery")
@@ -496,6 +496,10 @@ func main() {
 
 	if *webrtcPublicIp == "[IP_ADDRESS]" {
 		log.Fatalf("WebRTC public IP is required. Use -ip <ip_address> -port <port>")
+	}
+	publicIP, err := resolvePublicIP(*webrtcPublicIp)
+	if err != nil {
+		log.Fatalf("resolve WebRTC public IP %q: %v", *webrtcPublicIp, err)
 	}
 
 	// media engine with only Opus + H264
@@ -514,7 +518,7 @@ func main() {
 	// this is so that the sdp offer always sends our public IP
 	// in case our SFU server is behind NAT
 	settingEngine.SetICEAddressRewriteRules(webrtc.ICEAddressRewriteRule{
-		External:        []string{*webrtcPublicIp},
+		External:        []string{publicIP},
 		AsCandidateType: webrtc.ICECandidateTypeHost,
 		Mode:            webrtc.ICEAddressRewriteReplace,
 	})
@@ -549,7 +553,7 @@ func main() {
 		Logger:  logFactory.NewLogger("ice"),
 	})
 	settingEngine.SetICEUDPMux(mux)
-	log.Printf("WebRTC Public IP: %s", *webrtcPublicIp)
+	log.Printf("WebRTC Public IP: %s", publicIP)
 	log.Printf("WebRTC UDP port: %d", *webrtcPort)
 
 	// Create an InterceptorRegistry. This is the user configurable RTP/RTCP Pipeline.

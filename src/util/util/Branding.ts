@@ -158,6 +158,43 @@ export const appIconPng = (size: number) => {
 
 export const appIconUrl = (size: number) => `/assets/pwa/icon-${size}.png?v=${version(instanceIcon() ?? { file: DEFAULT_ICON_FILE })}`;
 
+const EMAIL_IMAGE_SIDES = { icon: 144, wordmark: 800 };
+
+export type EmailImage = keyof typeof EMAIL_IMAGE_SIDES;
+
+const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a", "hex");
+
+const emailImages = new BrandAssetCache<Buffer>();
+
+export const emailImageSource = (kind: EmailImage) => (kind === "icon" ? (instanceIcon() ?? { file: DEFAULT_ICON_FILE }) : instanceLogo());
+
+const renderEmailPng = async (image: BrandImage, side: number) => {
+    const source = "file" in image ? await readBrandAssetFile(image.file) : (await fetchBrandAsset(image.url))?.data;
+    if (!source) return null;
+    if (source.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) return source;
+    const sharp = (await import("sharp")).default;
+    const input = { limitInputPixels: 16777216, animated: false };
+    const { format } = await sharp(source, input).metadata();
+    return sharp(source, input)
+        .resize({ width: side, height: side, fit: "inside", withoutEnlargement: format !== "svg" })
+        .png()
+        .timeout({ seconds: 5 })
+        .toBuffer();
+};
+
+export const emailImagePng = (kind: EmailImage) => {
+    const image = emailImageSource(kind);
+    return image ? emailImages.get(`${kind}:${version(image)}`, () => renderEmailPng(image, EMAIL_IMAGE_SIDES[kind])) : Promise.resolve(null);
+};
+
+export const emailImageUrls = () => {
+    const logo = instanceLogo();
+    return {
+        icon: `/static/email/icon.png?v=${version(instanceIcon() ?? { file: DEFAULT_ICON_FILE })}`,
+        logo: logo ? `/static/email/wordmark.png?v=${version(logo)}` : null,
+    };
+};
+
 export const appManifest = () => {
     const name = instanceName();
     return {

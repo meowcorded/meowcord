@@ -39,6 +39,7 @@ import {
     PRESENCE_STALE_AFTER_MS,
     checkToken,
     Config,
+    requiredAction,
     Rights,
     CurrentTokenFormatVersion,
     emitEvent,
@@ -796,7 +797,7 @@ export async function onIdentify(this: WebSocket, data: Payload) {
                 resume_gateway_url: Config.get().gateway.endpointPublic!,
 
                 // lol hack whatever
-                required_action: Config.get().login.requireVerification && !user.verified ? "REQUIRE_VERIFIED_EMAIL" : undefined,
+                required_action: requiredAction(user) ?? undefined,
 
                 consents: {
                     personalization: {

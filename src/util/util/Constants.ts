@@ -727,7 +727,7 @@ export const DiscordApiErrors = {
         return new ApiError("Unauthorized. Provide a valid token and try again", 40001);
     },
     get ACCOUNT_VERIFICATION_REQUIRED() {
-        return new ApiError("You need to verify your account in order to perform this action", 40002);
+        return new ApiError("You need to verify your account in order to perform this action", 40002, 403);
     },
     get OPENING_DIRECT_MESSAGES_TOO_FAST() {
         return new ApiError("You are opening direct messages too fast", 40003);

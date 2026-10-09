@@ -1,5 +1,6 @@
 import {
     ApiError,
+    Config,
     DiscordApiErrors,
     EVENT,
     FieldErrors,
@@ -79,7 +80,9 @@ export interface RouteOptions {
      */
     authentication?: "never" | "optional" | "required";
     oauth2?: string[];
+    allowUnverified?: boolean;
 }
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 export function stripNull(obj: object) {
     for (const [key, value] of Object.entries(obj)) {
         if (value instanceof Object || (value && !value.__proto__)) {
@@ -146,6 +149,15 @@ export function route(opts: RouteOptions) {
             });
         }
         if (opts.authentication === "required" && !req.isAuthenticated) throw new ApiError("401: Unauthorized", 0, 401);
+        if (
+            opts.authentication === "required" &&
+            !opts.allowUnverified &&
+            !READ_METHODS.has(req.method) &&
+            req.user?.verified === false &&
+            !req.user.bot &&
+            Config.get().login.requireVerification
+        )
+            throw DiscordApiErrors.ACCOUNT_VERIFICATION_REQUIRED;
 
         const malformed = (["channel_id", "message_id"] as const).find((key) => {
             const value = (req.params as Record<string, string | undefined>)[key];

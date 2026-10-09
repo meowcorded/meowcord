@@ -8,6 +8,10 @@ Remote branding-image downloads have an 8 MiB body ceiling and a five-second dea
 
 Local branding PNG cache keys and public icon and wordmark versions include file identity, modification time, change time and size. Replacing a configured file at the same path refreshes these versions and rendered PNGs. Unchanged files keep stable versions. Remote versions continue to use the configured URL.
 
+## Email images
+
+`/static/email/icon.png` and `/static/email/wordmark.png` read their source through the same 8 MiB ceiling and five-second deadline. A PNG source is served unchanged and is never decoded. Any other format is decoded by sharp with a 16,777,216-pixel input limit and a five-second processing timeout, reading only the first frame of an animation, then resized to fit inside 144 pixels for the icon and 800 pixels for the wordmark. The rendered PNGs have their own cache of 16 entries that admits four distinct jobs. A failed or rejected source is served as the configured image without conversion.
+
 ## Burst reaction palettes
 
 Burst reaction palette work admits at most 32 distinct jobs per process and retains up to 1,024 cache entries. Repeated keys share accepted work, only completed least-recently-used entries are evicted, and overload uses deterministic fallback colors without starting another job. Settlement restores admission. Source response bytes, decoder allocations and duplicate request waiters are outside this distinct-job limit.

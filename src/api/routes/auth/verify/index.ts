@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { emitUserUpdate, readTicket, captchaKeyFrom, checkCaptcha } from "@spacebar/api/util";
 import { route } from "@spacebar/api/middlewares";
 import { User } from "@spacebar/database";
-import { Config, FieldErrors, generateToken } from "@spacebar/util";
+import { Config, emitRequiredAction, FieldErrors, generateToken } from "@spacebar/util";
 
 const router = Router({ mergeParams: true });
 
@@ -24,7 +24,7 @@ router.post(
 
         const config = Config.get();
 
-        const captcha = await checkCaptcha(config.register.requireCaptcha, captchaKeyFrom(req), req.ip);
+        const captcha = await checkCaptcha(config.register.requireCaptcha, captchaKeyFrom(req));
         if (captcha) return res.status(400).json(captcha);
 
         const invalid = () =>
@@ -47,6 +47,7 @@ router.post(
         if (!user.verified) {
             await User.update({ id: user.id }, { verified: true });
             await emitUserUpdate(user.id);
+            await emitRequiredAction(user.id);
         }
 
         res.json({

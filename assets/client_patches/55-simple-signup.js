@@ -1,6 +1,7 @@
 (() => {
   const CAP_WIDGET_SRC = "/api/v9/auth/cap/widget.js";
-  const rules = [
+  const emailRequired = window.GLOBAL_ENV?.REGISTER_EMAIL_REQUIRED === true;
+  const emailRules = [
     [
       /\(0,[\w$]+\.jsx\)\([\w$.]+,\{autoFocus:!0,className:[\w$.]+,label:[^,]+,name:"email",[^]*?onBlur:\(\)=>[\w$]+\("email"\)\}\),/g,
       "",
@@ -10,12 +11,15 @@
       '{autoFocus:!0,label:$1,className:$2,name:"global_name"',
     ],
     [
-      /\(0,[\w$]+\.jsx\)\([\w$.]+,\{label:[^,]+,wrapperClassName:[\w$.]+,name:"date_of_birth",[^]*?\}\),/g,
-      "",
-    ],
-    [
       /(let ([\w$]+)=!1;)0===[\w$]+\.length&&\([\w$]+\([\w$]+\.intl\.string\([\w$.]+\)\),\2=!0\),(?=0===[\w$]+\.length&&[^;]*?0===[\w$]+\.length&&)/g,
       "$1",
+    ],
+  ];
+  const rules = [
+    ...(emailRequired ? [] : emailRules),
+    [
+      /\(0,[\w$]+\.jsx\)\([\w$.]+,\{label:[^,]+,wrapperClassName:[\w$.]+,name:"date_of_birth",[^]*?\}\),/g,
+      "",
     ],
     [/null==[\w$]+&&\([\w$]+\([\w$]+\.intl\.string\([\w$.]+\)\),[\w$]+=!0\),/g, ""],
     [/"tUjnxr":\["Email or Phone Number"\]/g, '"tUjnxr":["Email or Username"]'],

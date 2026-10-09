@@ -27,7 +27,7 @@ router.post(
 
         const config = Config.get();
 
-        const captcha = await checkCaptcha(config.login.requireCaptcha, captchaKeyFrom(req), req.ip);
+        const captcha = await checkCaptcha(config.login.requireCaptcha, captchaKeyFrom(req));
         if (captcha) return res.status(400).json(captcha);
 
         const user = await User.findOneOrFail({
@@ -69,16 +69,6 @@ router.post(
                 password: {
                     message: req.t("auth:login.INVALID_LOGIN"),
                     code: "INVALID_LOGIN",
-                },
-            });
-        }
-
-        // return an error for unverified accounts if verification is required
-        if (config.login.requireVerification && !user.verified) {
-            throw FieldErrors({
-                login: {
-                    code: "ACCOUNT_LOGIN_VERIFICATION_EMAIL",
-                    message: "Email verification is required, please check your email.",
                 },
             });
         }
@@ -128,7 +118,7 @@ router.post(
  * @returns {"token": null, "mfa": true, "webauthn": true, "sms": true, "ticket": "SOME TICKET JWT TOKEN"}
 
  * Captcha required:
- * @returns {"captcha_key": ["captcha-required"], "captcha_sitekey": null, "captcha_service": "recaptcha"}
+ * @returns {"captcha_key": ["captcha-required"], "captcha_sitekey": "fosscord", "captcha_service": "cap"}
 
  * Sucess:
  * @returns {"token": "USERTOKEN", "settings": {"locale": "en", "theme": "dark"}}

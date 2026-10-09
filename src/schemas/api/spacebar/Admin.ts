@@ -83,12 +83,12 @@ export interface AdminSettingsUpdateSchema {
             minSymbols?: number;
         };
     };
-    login?: { requireCaptcha?: boolean };
+    login?: { requireCaptcha?: boolean; requireVerification?: boolean };
+    defaults?: { user?: { verified?: boolean } };
     passwordReset?: { requireCaptcha?: boolean };
     captcha?: {
         capMode?: "core" | "standalone";
         enabled?: boolean;
-        service?: "cap" | "hcaptcha" | "recaptcha" | null;
         sitekey?: string | null;
         /**
          * Write only. An empty string keeps the current secret.

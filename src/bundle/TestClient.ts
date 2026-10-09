@@ -251,6 +251,7 @@ const buildHtml = () => {
         E2EE_TRUST_SERVER: ${json(Config.get().limits.e2ee.trustServerByDefault !== false)},
         PRIVATE_ENCRYPTION_DEFAULT: true,
         GROUP_DM_RECIPIENT_LIMIT: ${json(Config.get().limits.channel.maxGroupDmRecipients)},
+        REGISTER_EMAIL_REQUIRED: ${json(Config.get().register.email.required === true)},
         CUSTOM_CLAN_BADGE_PACK: ${json(CUSTOM_CLAN_BADGE_PACK)},
         CUSTOM_CLAN_BADGES: ${json(CUSTOM_CLAN_BADGES.map((badge) => ({ ...badge, pack: clanBadgePack(badge), colors: clanBadgeColorCount(badge) })))},
     });
@@ -355,6 +356,7 @@ export default function TestClient(app: Application) {
             Config.get().limits.channel.maxGroupDmRecipients,
             Config.get().limits.channel.allowSlowmodeBypass,
             Config.get().limits.e2ee.trustServerByDefault,
+            Config.get().register.email.required,
         ]);
     let brand = brandStamp();
     let page = renderPage();

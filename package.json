@@ -120,7 +120,6 @@
     "@types/ws": "^8.18.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "hash-wasm": "^4.12.0",
-    "sharp": "^0.35.5",
     "typescript": "^6.0.3",
     "typescript-json-schema": "^0.68.0"
   },
@@ -129,7 +128,8 @@
     "jimp": "^1.6.1",
     "mailgun.js": "^13.3.0",
     "node-mailjet": "^6.0.11",
-    "nodemailer": "^10.0.16"
+    "nodemailer": "^10.0.16",
+    "sharp": "^0.35.5"
   },
   "patchedDependencies": {
     "ajv@8.20.0": "patches/ajv@8.20.0.patch",

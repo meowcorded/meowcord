@@ -18,6 +18,7 @@ router.post(
                 body: "APIErrorResponse",
             },
         },
+        allowUnverified: true,
     }),
     async (req: Request, res: Response) => {
         const user = await User.findOneOrFail({

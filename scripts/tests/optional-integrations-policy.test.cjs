@@ -81,7 +81,7 @@ function config(allowed = false) {
             ipdataApiKey: "test-ip-key",
             abuseIpDbApiKey: "test-abuse-key",
             abuseipdbBlacklistRatelimit: 1,
-            captcha: { enabled: true, service: "hcaptcha", sitekey: "local-key", secret: "local-secret" },
+            captcha: { enabled: true, capMode: "standalone", sitekey: "local-key", secret: "local-secret" },
             webPush: { enabled: true, vapidPublicKey: "public-fixture" },
         },
     };
@@ -119,7 +119,7 @@ test("AbuseIPDB opt-in uses the AbuseIPDB credential and bounded request", async
     assert.equal(await AbuseIpDbClient.checkIpAddress("192.0.2.1"), null);
 });
 
-test("disabled external CAPTCHA does not send tokens and does not challenge", async () => {
+test("incomplete Cap Standalone does not send tokens and does not challenge", async () => {
     const { captchaEnabled, checkCaptcha, verifyCaptcha } = load("src/api/util/utility/captcha.ts", config());
     assert.equal(captchaEnabled(), false);
     assert.equal(await checkCaptcha(true, null), null);
@@ -128,8 +128,6 @@ test("disabled external CAPTCHA does not send tokens and does not challenge", as
 
 test("self-hosted Cap remains usable while third-party policy is disabled", async () => {
     const cfg = config();
-    cfg.security.captcha.service = "cap";
-    cfg.security.captcha.capMode = "standalone";
     cfg.security.captcha.instance = "http://127.0.0.1:3000/";
     let requests = 0;
     const { captchaEnabled, verifyCaptcha } = load("src/api/util/utility/captcha.ts", cfg, {
@@ -188,7 +186,6 @@ test("Cap core ignores stored standalone credentials and makes no external reque
     const cfg = config();
     cfg.register = { requireCaptcha: true };
     Object.assign(cfg.security.captcha, {
-        service: "cap",
         capMode: "core",
         instance: "https://stored-cap.example.test",
         sitekey: "old-key",
@@ -216,7 +213,6 @@ test("Cap standalone required signup verifies even when optional captcha is disa
     cfg.register = { requireCaptcha: true };
     Object.assign(cfg.security.captcha, {
         enabled: false,
-        service: "cap",
         capMode: "standalone",
         instance: "http://127.0.0.1:3000/",
         sitekey: "local-key",
@@ -245,7 +241,6 @@ test("incomplete explicit standalone fails closed instead of using core", async 
         const cfg = config();
         cfg.register = { requireCaptcha: true };
         Object.assign(cfg.security.captcha, {
-            service: "cap",
             capMode: "standalone",
             instance: "https://cap.example.test",
             sitekey: "key",

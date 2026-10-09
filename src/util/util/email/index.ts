@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { User } from "../../../database/entities";
 import { Config } from "../Config";
+import { emailImageUrls, instanceName as wordmarkName } from "../Branding";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { JwtKeypairManager } from "../Token";
@@ -18,6 +19,25 @@ export enum MailTypes {
     resetPassword = "resetPassword",
     changePassword = "changePassword",
 }
+
+const escapeHtml = (text: string) => text.replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+const publicOrigin = () => {
+    const { frontPage, serverName } = Config.get().general;
+    const endpoint = Config.get().api.endpointPublic;
+    return [frontPage, serverName, endpoint].map((x) => (x && /^https?:\/\//.test(x) ? new URL(x).origin : null)).find(Boolean) ?? "";
+};
+
+const WORDMARK_TEXT_STYLE = "color: white; font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 800; line-height: 36px";
+
+const instanceWordmark = () => {
+    const origin = publicOrigin();
+    const { icon, logo } = emailImageUrls();
+    const name = escapeHtml(wordmarkName());
+    if (logo)
+        return `<img src="${origin}${logo}" alt="${name}" style="width: 100%; max-width: 200px; margin: 0 auto; display: block; padding: 20px; text-align: center; ${WORDMARK_TEXT_STYLE}" />`;
+    return `<div style="padding: 20px; text-align: center"><img src="${origin}${icon}" alt="" style="width: 36px; height: 36px; object-fit: contain; vertical-align: middle" /><span style="margin-left: 10px; vertical-align: middle; ${WORDMARK_TEXT_STYLE}">${name}</span></div>`;
+};
 
 export const Email: {
     transporter: IEmailClient | null;
@@ -85,6 +105,7 @@ export const Email: {
         const { instanceName } = Config.get().general;
 
         const replacements = [
+            ["{instanceWordmark}", instanceWordmark()],
             ["{instanceName}", instanceName],
             ["{userUsername}", user.username],
             ["{userDiscriminator}", user.discriminator],
@@ -132,10 +153,7 @@ export const Email: {
             JwtKeypairManager.keypair.privateKey,
             { algorithm: "ES512", expiresIn: reset ? "1h" : "7d" },
         );
-        const { frontPage, serverName } = Config.get().general;
-        const endpoint = Config.get().api.endpointPublic;
-        const origin = [frontPage, serverName, endpoint].map((x) => (x && /^https?:\/\//.test(x) ? new URL(x).origin : null)).find(Boolean) ?? "";
-        return `${origin}/${reset ? "reset" : "verify"}#token=${token}`;
+        return `${publicOrigin()}/${reset ? "reset" : "verify"}#token=${token}`;
     },
 
     /**

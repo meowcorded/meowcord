@@ -12,7 +12,7 @@ const router = Router({ mergeParams: true });
 const pickRate = ({ count, window }: { count: number; window: number }) => ({ count, window });
 
 const pickSettings = () => {
-    const { general, client, register, login, passwordReset, security, limits, guild, externalRequests, user } = Config.get();
+    const { general, client, register, login, passwordReset, security, limits, guild, externalRequests, user, defaults } = Config.get();
     const { captcha } = security;
     return {
         user: { identityBlockedTerms: user.identityBlockedTerms },
@@ -54,12 +54,12 @@ const pickSettings = () => {
                 minSymbols: register.password.minSymbols,
             },
         },
-        login: { requireCaptcha: login.requireCaptcha },
+        login: { requireCaptcha: login.requireCaptcha, requireVerification: login.requireVerification },
+        defaults: { user: { verified: defaults.user.verified } },
         passwordReset: { requireCaptcha: passwordReset.requireCaptcha },
         captcha: {
             capMode: captcha.capMode,
             enabled: captcha.enabled,
-            service: captcha.service,
             sitekey: captcha.sitekey,
             instance: captcha.instance,
             secret_set: !!captcha.secret,
@@ -87,6 +87,12 @@ const pickSettings = () => {
             discovery: { hideJoinedGuilds: guild.discovery.hideJoinedGuilds },
         },
     };
+};
+
+const assertVerificationRequiresEmail = (body: AdminSettingsUpdateSchema) => {
+    const { login, register } = Config.get();
+    if (!(body.login?.requireVerification ?? login.requireVerification)) return;
+    if (!(body.register?.email?.required ?? register.email.required)) throw new HTTPError("Require an email address at sign-up before requiring a verified email", 400);
 };
 
 const blankToNull = (value: unknown) => (typeof value === "string" ? value.trim() || null : value);
@@ -144,7 +150,7 @@ router.patch(
 
         const nextCaptcha = { ...Config.get().security.captcha, ...captcha };
         if (nextCaptcha.capMode === "standalone") {
-            if (nextCaptcha.service !== "cap" || !nextCaptcha.instance || !nextCaptcha.sitekey || !nextCaptcha.secret)
+            if (!nextCaptcha.instance || !nextCaptcha.sitekey || !nextCaptcha.secret)
                 throw new HTTPError("Cap Standalone requires a server URL, site key and secret. Choose Cap core to run verification locally.", 400);
             let url: URL;
             try {
@@ -155,6 +161,8 @@ router.patch(
             if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash)
                 throw new HTTPError("Use an HTTP or HTTPS Cap Standalone URL without credentials, query parameters or a fragment", 400);
         }
+
+        assertVerificationRequiresEmail(body);
 
         const { login, register: registerRate, ...rate } = body.rate ?? {};
 
@@ -175,6 +183,7 @@ router.patch(
             },
             register,
             login: body.login ?? {},
+            defaults: body.defaults ?? {},
             passwordReset: body.passwordReset ?? {},
             security: { captcha },
             limits: {
