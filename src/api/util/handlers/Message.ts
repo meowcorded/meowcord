@@ -4,7 +4,7 @@ import { In, Raw } from "typeorm";
 import { fillMessageUrlEmbeds } from "../utility/EmbedHandlers";
 import { resolveSoundmoji } from "../utility/Soundboard";
 import { getDatabase, Application, Attachment, Channel, CloudAttachment, Guild, Member, Message, ReadState, Role, Sticker, User, Webhook } from "@spacebar/database";
-import { Stopwatch, Random } from "@spacebar/extensions";
+import { Stopwatch, Random, normalizeLineEndings } from "@spacebar/extensions";
 import {
     Config,
     DiscordApiErrors,
@@ -456,6 +456,7 @@ export async function handleMessage(
     } = {},
 ): Promise<Message> {
     const conf = Config.get();
+    if (opts.content !== undefined) opts.content = normalizeLineEndings(opts.content);
     checkMessageLimits(opts);
     if (opts.components && known.componentsChanged !== false) handleComps(opts.components, opts.flags || 0);
 

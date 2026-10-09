@@ -18,6 +18,7 @@ const defaults: Record<string, { variant: number; config?: object }> = {
     "2026-09-soundboard-favorites": { variant: 2 },
     "2026-03-friend-request-message": { variant: 1 },
     "2026-09-connected-thread-sidebar": { variant: 1 },
+    "2026-03-arborium-highlight": { variant: 1 },
 };
 
 export const ROLLOUT_BUCKETS = 10000;

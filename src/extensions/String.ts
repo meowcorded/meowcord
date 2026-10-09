@@ -6,6 +6,11 @@ export function trimSpecial(str?: string): string {
     return str.replace(SPECIAL_CHAR, "").trim();
 }
 
+export function normalizeLineEndings(str?: string): string {
+    if (!str) return "";
+    return str.replace(/\r\n?/g, "\n");
+}
+
 /**
  * Capitalizes the first letter of a string.
  * @param str The string to capitalize.
