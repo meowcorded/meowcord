@@ -60,10 +60,15 @@ export const homePage = () => {
     const page = fs.readFileSync(path.join(PUBLIC_ASSETS_FOLDER, "index.html"), "utf8");
     return brandPage(
         page
-            .replaceAll("__TAGLINE__", description ? escapeHtml(description) : "Servers, channels, voice and encrypted DMs for you and your friends. Everything is free.")
+            .replaceAll("__TAGLINE__", description ? escapeHtml(description) : "Chat, voice and encrypted DMs with your friends. Every feature is free.")
             .replace("__ACTIONS__", actions)
             .replace("__JOIN_NOTE__", joinNote)
-            .replace("__FAQ__", faq.map(([question, answer]) => `<details><summary>${question}</summary><div class="answer">${answer}</div></details>`).join(""))
+            .replace(
+                "__FAQ__",
+                faq
+                    .map(([question, answer]) => `<details><summary><span>${question}</span><i aria-hidden="true"></i></summary><div class="answer">${answer}</div></details>`)
+                    .join(""),
+            )
             .replace("__CONTACT__", contact ? `<a href="mailto:${escapeHtml(email!)}">Contact</a>` : ""),
     );
 };

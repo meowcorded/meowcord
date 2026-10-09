@@ -37,45 +37,61 @@
       }
       :root {
         color-scheme: dark;
-        --color-page: #111114;
-        --color-surface: #1a1a1f;
-        --color-surface-raised: #222228;
-        --color-surface-hover: #2a2a31;
-        --color-border: #2e2e36;
-        --color-text: #ececf1;
-        --color-text-secondary: #a3a3ad;
-        --color-text-muted: #75757f;
+        --color-page: #15121a;
+        --color-window: #1d1922;
+        --color-window-sunken: #18151d;
+        --color-window-raised: #2a2430;
+        --color-divider: #2b2531;
+        --color-text: #f2eef6;
+        --color-text-secondary: #aaa2b4;
+        --color-text-muted: #7b7385;
         --color-accent: #7b5cff;
-        --color-accent-hover: #6a4be8;
-        --color-accent-text: #b9abff;
-        --color-accent-soft: rgb(123 92 255 / 0.16);
-        --color-online: #3ba55d;
-        --image-outline: rgb(255 255 255 / 0.08);
+        --color-link: #bcadff;
+        --color-online: #3fbf7f;
+        --color-mention: #f2546b;
+        --color-feature-ui: #8fb8ff;
+        --color-feature-code: #7fdcb2;
+        --color-feature-lock: #ffb685;
+        --color-feature-gift: #ff9cc4;
+        --color-button: #221e28;
+        --color-button-top: #2f2936;
+        --color-button-shine: rgb(255 255 255 / 0.09);
+        --color-button-ring: rgb(0 0 0 / 0.55);
+        --color-button-drop: rgb(0 0 0 / 0.28);
+        --image-outline: oklch(1 0 0 / 0.1);
         --shadow-window:
-          0 1px 1px rgb(0 0 0 / 0.2), 0 4px 8px rgb(0 0 0 / 0.2), 0 16px 32px rgb(0 0 0 / 0.24),
-          0 40px 80px rgb(0 0 0 / 0.28);
+          0 0 0 1px rgb(255 255 255 / 0.06), 0 -1px 2px rgb(0 0 0 / 0.2), 0 -8px 20px rgb(0 0 0 / 0.22),
+          0 -28px 60px rgb(0 0 0 / 0.3);
         font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
       }
       @media (prefers-color-scheme: light) {
         :root {
           color-scheme: light;
-          --color-page: #f6f6f8;
-          --color-surface: #ffffff;
-          --color-surface-raised: #f0f0f3;
-          --color-surface-hover: #e8e8ed;
-          --color-border: #dddde3;
-          --color-text: #1d1d22;
-          --color-text-secondary: #55555f;
-          --color-text-muted: #75757f;
+          --color-page: #f7f5fa;
+          --color-window: #ffffff;
+          --color-window-sunken: #f3f0f7;
+          --color-window-raised: #e9e4ef;
+          --color-divider: #e4dfea;
+          --color-text: #1d1823;
+          --color-text-secondary: #5e5767;
+          --color-text-muted: #7f7789;
           --color-accent: #6a4be8;
-          --color-accent-hover: #5a3cd6;
-          --color-accent-text: #5a3cd6;
-          --color-accent-soft: rgb(106 75 232 / 0.1);
+          --color-link: #5a3cd6;
           --color-online: #23a55a;
-          --image-outline: rgb(0 0 0 / 0.08);
+          --color-mention: #e0384f;
+          --color-feature-ui: #2f6fd6;
+          --color-feature-code: #1b9466;
+          --color-feature-lock: #cf6a24;
+          --color-feature-gift: #cf3f7c;
+          --color-button: #eeeaf3;
+          --color-button-top: #ffffff;
+          --color-button-shine: rgb(255 255 255 / 1);
+          --color-button-ring: rgb(40 20 70 / 0.13);
+          --color-button-drop: rgb(40 20 70 / 0.08);
+          --image-outline: oklch(0 0 0 / 0.1);
           --shadow-window:
-            0 1px 1px rgb(20 20 40 / 0.04), 0 4px 8px rgb(20 20 40 / 0.05),
-            0 16px 32px rgb(20 20 40 / 0.07), 0 40px 80px rgb(20 20 40 / 0.08);
+            0 0 0 1px rgb(40 20 70 / 0.07), 0 -1px 2px rgb(40 20 70 / 0.03), 0 -8px 20px rgb(40 20 70 / 0.05),
+            0 -28px 60px rgb(40 20 70 / 0.08);
         }
       }
       * {
@@ -88,33 +104,33 @@
       }
       body {
         margin: 0;
-        min-height: 100svh;
-        display: flex;
-        flex-direction: column;
+        overflow-x: clip;
         background: var(--color-page);
         color: var(--color-text);
         font-size: 16px;
         line-height: 1.6;
       }
       a {
-        color: var(--color-accent-text);
+        color: var(--color-link);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
         text-underline-position: from-font;
         text-decoration-skip-ink: auto;
-        text-underline-offset: 2px;
       }
       a:focus-visible,
-      summary:focus-visible {
+      summary:focus-visible,
+      button:focus-visible {
         outline: 2px solid var(--color-accent);
-        outline-offset: 3px;
+        outline-offset: 4px;
       }
       .skip {
         position: absolute;
-        top: 8px;
-        left: 8px;
+        top: 12px;
+        left: 12px;
         z-index: 1;
         padding: 8px 12px;
         border-radius: 8px;
-        background: var(--color-surface);
+        background: var(--color-button);
         transform: translateY(-200%);
       }
       .skip:focus-visible {
@@ -122,577 +138,903 @@
       }
       .wrap {
         width: 100%;
-        max-width: 1120px;
-        margin: 0 auto;
-        padding-inline: 24px;
+        max-width: 1200px;
+        margin-inline: auto;
+        padding-inline: clamp(24px, 5vw, 64px);
       }
-      header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        padding-top: 20px;
-        padding-bottom: 20px;
+      .page {
+        display: grid;
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+        gap: clamp(48px, 8vw, 128px);
+        padding-block: clamp(48px, 10vh, 112px) 48px;
       }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-        color: var(--color-text);
-        font-weight: 800;
-        font-size: 18px;
-        text-decoration: none;
+      .hero {
+        position: sticky;
+        top: clamp(48px, 10vh, 112px);
+        align-self: start;
       }
-      .brand span {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .brand .brand-icon {
-        flex: none;
-        width: 36px;
-        height: 36px;
-        border-radius: 11px;
+      .brand-icon {
+        display: block;
+        width: 56px;
+        height: 56px;
+        margin-bottom: 28px;
+        border-radius: 17px;
         object-fit: cover;
       }
       img.brand-icon {
         outline: 1px solid var(--image-outline);
         outline-offset: -1px;
       }
-      header nav a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 40px;
-        padding: 0 4px;
-        color: var(--color-text-secondary);
-        font-size: 15px;
-        font-weight: 500;
-        text-decoration: none;
-        white-space: nowrap;
-      }
-      .hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
-        align-items: center;
-        gap: 64px;
-        padding-top: 56px;
-        padding-bottom: 96px;
-      }
       h1 {
-        margin: 0 0 20px;
-        font-size: clamp(36px, 5.2vw, 56px);
+        margin: 0;
+        font-size: clamp(34px, 4vw, 48px);
         font-weight: 800;
-        line-height: 1.08;
-        letter-spacing: -0.02em;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
         text-wrap: balance;
         overflow-wrap: break-word;
       }
       .tagline {
-        max-width: 34em;
-        margin: 0 0 32px;
+        max-width: 24em;
+        margin: 16px 0 32px;
         color: var(--color-text-secondary);
         font-size: 19px;
+        line-height: 1.5;
         text-wrap: pretty;
         overflow-wrap: break-word;
       }
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
       }
       .button {
+        --button-top: var(--color-button-top);
+        --button-bottom: var(--color-button);
+        --button-shine: var(--color-button-shine);
+        --button-ring: var(--color-button-ring);
+        --button-drop: var(--color-button-drop);
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 48px;
+        min-height: 46px;
         padding: 0 22px;
-        border-radius: 10px;
-        background: var(--color-surface-raised);
+        border-radius: 14px;
+        background: linear-gradient(in oklab, var(--button-top), var(--button-bottom));
+        box-shadow:
+          inset 0 1px 0 var(--button-shine),
+          inset 0 -1px 0 rgb(0 0 0 / 0.12),
+          0 0 0 1px var(--button-ring),
+          0 1px 2px var(--button-drop),
+          0 4px 10px var(--button-drop);
         color: var(--color-text);
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         text-decoration: none;
         white-space: nowrap;
         transition:
-          background-color 150ms ease,
+          filter 150ms ease,
+          box-shadow 150ms ease,
           scale 200ms ease-out;
       }
       .button.primary {
-        background: var(--color-accent);
+        --button-top: #977dff;
+        --button-bottom: #6a4be8;
+        --button-shine: rgb(255 255 255 / 0.4);
+        --button-ring: rgb(70 40 190 / 0.9);
+        --button-drop: rgb(90 60 230 / 0.3);
         color: #fff;
+        text-shadow: 0 1px 1px rgb(30 10 90 / 0.35);
       }
       .button:active {
-        scale: 0.97;
+        scale: 0.96;
+        filter: brightness(0.96);
+        box-shadow:
+          inset 0 1px 2px rgb(0 0 0 / 0.2),
+          0 0 0 1px var(--button-ring),
+          0 1px 1px var(--button-drop);
       }
       .join-note {
+        max-width: 30em;
         margin: 16px 0 0;
         color: var(--color-text-muted);
         font-size: 14px;
         text-wrap: pretty;
       }
-      .highlights {
+      .features {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 20px 24px;
-        margin: 40px 0 0;
-        padding: 24px 0 0;
-        border-top: 1px solid var(--color-border);
+        gap: 28px 40px;
+        margin: 0 0 56px;
+        padding: 0;
         list-style: none;
       }
-      .highlights li {
-        display: flex;
-        gap: 12px;
+      .features li {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        column-gap: 12px;
         color: var(--color-text-secondary);
         font-size: 14px;
         line-height: 1.5;
+        text-wrap: pretty;
       }
-      .highlights strong {
-        display: block;
+      .features svg {
+        grid-row: span 2;
+        width: 22px;
+        height: 22px;
+        margin-top: 1px;
+        color: var(--feature);
+      }
+      .features strong {
+        margin-bottom: 2px;
         color: var(--color-text);
+        font-size: 16px;
+        font-weight: 600;
+      }
+      h2 {
+        margin: 0 0 12px;
+        color: var(--color-text-secondary);
         font-size: 15px;
         font-weight: 600;
       }
-      .highlights svg {
-        flex: none;
-        width: 20px;
-        height: 20px;
-        margin-top: 1px;
-        color: var(--color-accent-text);
+      details {
+        border-top: 1px solid var(--color-divider);
       }
-      .preview {
+      details:last-child {
+        border-bottom: 1px solid var(--color-divider);
+      }
+      summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 60px;
+        padding: 16px 0;
+        border-radius: 6px;
+        font-size: 17px;
+        font-weight: 500;
+        cursor: pointer;
+        list-style: none;
+        text-wrap: pretty;
+        overflow-wrap: break-word;
+        transition: color 120ms ease;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary i {
         position: relative;
-        display: grid;
-        grid-template-columns: 56px 168px minmax(0, 1fr);
-        height: 400px;
-        overflow: hidden;
-        border-radius: 16px;
-        background: var(--color-surface);
-        box-shadow: var(--shadow-window);
+        flex: none;
+        width: 12px;
+        height: 12px;
+        margin-right: 4px;
+        color: var(--color-text-muted);
+      }
+      summary i::before,
+      summary i::after {
+        content: "";
+        position: absolute;
+        inset: 5px 0;
+        border-radius: 1px;
+        background: currentColor;
+      }
+      summary i::after {
+        rotate: 90deg;
+      }
+      details[open] summary i::after {
+        rotate: 0deg;
+      }
+      .faq-list[data-collapsed] details:nth-of-type(n + 6) {
+        display: none;
+      }
+      .faq-list[data-collapsed] details:nth-of-type(5) {
+        border-bottom: 0;
+        mask-image: linear-gradient(to bottom, #000 10%, transparent 75%);
+      }
+      .more {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 36px;
+        margin: -40px auto 0;
+        padding: 0 12px 0 16px;
+        border: 0;
+        border-radius: 10px;
+        background: var(--color-page);
+        box-shadow:
+          0 0 0 1px var(--color-divider),
+          0 1px 2px var(--color-button-drop);
+        color: var(--color-text-secondary);
+        font: inherit;
         font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          color 120ms ease,
+          box-shadow 120ms ease,
+          scale 200ms ease-out;
+      }
+      .more::before {
+        content: "";
+        position: absolute;
+        inset: -4px;
+      }
+      .more svg {
+        width: 14px;
+        height: 14px;
+        translate: 0 1px;
+      }
+      .more:active {
+        scale: 0.96;
+      }
+      .more[hidden] {
+        display: none;
+      }
+      .answer {
+        padding: 0 40px 24px 0;
+        color: var(--color-text-secondary);
+        text-wrap: pretty;
+        overflow-wrap: break-word;
+      }
+      .answer p {
+        max-width: 60ch;
+        margin: 0;
+      }
+      footer {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 4px 20px;
+        padding-block: 20px;
+        border-top: 1px solid var(--color-divider);
+        font-size: 14px;
+      }
+      footer a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        color: var(--color-text-muted);
+        text-decoration: none;
+        transition: color 120ms ease;
+      }
+      .credit {
+        margin: 56px 0 28px;
+        color: var(--color-text-secondary);
+        font-size: clamp(20px, 2.4vw, 26px);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        text-align: center;
+        text-wrap: balance;
+      }
+      .credit a {
+        color: var(--color-text);
+        text-decoration-color: var(--color-accent);
+        text-decoration-thickness: 2px;
+        text-underline-offset: 5px;
+      }
+
+      .finale {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+      }
+      .glow {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        width: 100%;
+        height: 100%;
+        image-rendering: pixelated;
+        pointer-events: none;
+      }
+      .stage {
+        position: relative;
+      }
+      .cat {
+        position: absolute;
+        right: clamp(48px, 14%, 180px);
+        bottom: calc(100% - 20px);
+        z-index: 1;
+        width: 96px;
+        height: 76px;
+      }
+      .cat .fur {
+        fill: #d9cfe9;
+      }
+      .cat .line {
+        fill: #0e0b12;
+      }
+      .cat .pink {
+        fill: #f59bbd;
+      }
+      .cat .eye {
+        fill: #0e0b12;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      .peek {
+        height: calc(clamp(240px, 28vw, 330px) + 64px);
+        padding-top: 64px;
+        overflow: hidden;
         user-select: none;
         pointer-events: none;
+      }
+      .window {
+        display: grid;
+        grid-template-columns: 72px 216px minmax(0, 1fr) 216px;
+        height: 520px;
+        overflow: hidden;
+        border-radius: 20px 20px 0 0;
+        background: var(--color-window);
+        box-shadow: var(--shadow-window);
+        font-size: 14px;
       }
       .rail {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 8px;
-        padding: 12px 0;
-        background: var(--color-page);
+        padding: 14px 0;
+        background: var(--color-window-sunken);
       }
-      .rail .brand-icon {
-        width: 36px;
+      .server {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--color-window-raised);
+        color: #fff;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .server.current::before {
+        content: "";
+        position: absolute;
+        left: -14px;
+        width: 4px;
         height: 36px;
-        border-radius: 11px;
-        object-fit: cover;
+        border-radius: 0 4px 4px 0;
+        background: var(--color-text);
+      }
+      .server .brand-icon {
+        width: 44px;
+        height: 44px;
+        margin: 0;
+        border-radius: 15px;
+      }
+      .server b {
+        position: absolute;
+        right: -7px;
+        bottom: -7px;
+        display: grid;
+        place-items: center;
+        min-width: 14px;
+        height: 14px;
+        padding: 0 4px;
+        border: 3px solid var(--color-window-sunken);
+        border-radius: 10px;
+        background: var(--color-mention);
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        box-sizing: content-box;
       }
       .rail hr {
-        width: 24px;
+        width: 28px;
         margin: 2px 0;
         border: 0;
-        border-top: 2px solid var(--color-border);
+        border-top: 2px solid var(--color-divider);
       }
-      .rail i {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--color-surface-raised);
+      .channels,
+      .members {
+        padding: 16px 10px;
+        background: var(--color-window-sunken);
       }
-      .rail i:nth-of-type(2) {
-        background: var(--color-accent-soft);
-      }
-      .channels {
-        padding: 14px 8px;
-        border-right: 1px solid var(--color-border);
-        background: var(--color-surface);
-      }
-      .channels b {
+      .channels > b {
         display: block;
-        margin: 0 8px 14px;
+        margin: 0 8px 18px;
+        font-size: 15px;
         font-weight: 600;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .channels small {
+      .channels small,
+      .members small {
         display: block;
-        margin: 14px 8px 4px;
+        margin: 18px 8px 6px;
         color: var(--color-text-muted);
         font-size: 12px;
         font-weight: 600;
       }
+      .members small {
+        margin-top: 0;
+      }
       .channel {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 8px;
-        border-radius: 6px;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 8px;
         color: var(--color-text-muted);
         white-space: nowrap;
       }
-      .channel::before {
-        content: "#";
-        font-size: 16px;
-      }
-      .channel.voice::before {
-        content: none;
-      }
       .channel svg {
         flex: none;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
       }
       .channel.active {
-        background: var(--color-surface-hover);
+        background: var(--color-window-raised);
         color: var(--color-text);
+      }
+      .channel.unread {
+        color: var(--color-text);
+        font-weight: 600;
+      }
+      .voice-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 8px 4px 34px;
+        color: var(--color-text-secondary);
+        font-size: 13px;
+      }
+      .voice-user .avatar {
+        width: 24px;
+        height: 24px;
+      }
+      .voice-user.speaking .avatar {
+        box-shadow:
+          0 0 0 2px var(--color-window-sunken),
+          0 0 0 4px var(--color-online);
       }
       .chat {
         display: flex;
         flex-direction: column;
         min-width: 0;
-        background: var(--color-surface);
       }
       .chat-head {
-        padding: 13px 16px;
-        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--color-divider);
         font-weight: 600;
       }
-      .chat-head::before {
-        content: "# ";
+      .chat-head svg {
+        width: 20px;
+        height: 20px;
         color: var(--color-text-muted);
       }
       .messages {
         display: flex;
-        flex: 1;
         flex-direction: column;
-        justify-content: flex-end;
-        gap: 14px;
-        padding: 16px;
+        gap: 18px;
+        padding: 20px;
       }
       .message {
         display: grid;
-        grid-template-columns: 36px minmax(0, 1fr);
-        gap: 12px;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 14px;
         line-height: 1.45;
       }
       .avatar {
-        width: 36px;
-        height: 36px;
+        flex: none;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
+        background: var(--avatar);
       }
       .message b {
+        color: var(--name, var(--color-text));
         font-weight: 600;
       }
       .message time {
-        margin-left: 6px;
+        margin-left: 8px;
         color: var(--color-text-muted);
         font-size: 12px;
       }
       .message p {
-        margin: 1px 0 0;
-        color: var(--color-text-secondary);
+        margin: 2px 0 0;
+        color: var(--color-text);
+        opacity: 0.86;
+      }
+      .reactions {
+        display: flex;
+        gap: 6px;
+        margin-top: 8px;
       }
       .reaction {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        margin-top: 6px;
-        padding: 1px 8px;
-        border: 1px solid var(--color-accent);
+        gap: 6px;
+        padding: 2px 9px;
         border-radius: 8px;
-        background: var(--color-accent-soft);
+        background: var(--color-window-raised);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .reaction.mine {
+        background: rgb(123 92 255 / 0.16);
+        box-shadow: inset 0 0 0 1px var(--color-accent);
+      }
+      .typing {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 20px;
+        color: var(--color-text-secondary);
         font-size: 13px;
       }
-      .composer {
-        margin: 0 16px 16px;
-        padding: 11px 14px;
-        border-radius: 10px;
-        background: var(--color-surface-raised);
-        color: var(--color-text-muted);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .typing b {
+        color: var(--color-text);
+        font-weight: 600;
       }
-      .faq {
-        padding-top: 72px;
-        padding-bottom: 96px;
-        border-top: 1px solid var(--color-border);
+      .dots {
+        display: inline-flex;
+        gap: 3px;
       }
-      .faq-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-        gap: 64px;
+      .dots i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.5;
       }
-      h2 {
-        margin: 0 0 12px;
-        font-size: 32px;
-        font-weight: 800;
-        line-height: 1.15;
-        letter-spacing: -0.01em;
-        text-wrap: balance;
-      }
-      .faq-intro p {
-        margin: 0;
-        color: var(--color-text-secondary);
-        text-wrap: pretty;
-      }
-      details {
-        border-bottom: 1px solid var(--color-border);
-      }
-      details:first-child {
-        border-top: 1px solid var(--color-border);
-      }
-      summary {
+      .member {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        min-height: 64px;
-        padding: 14px 0;
-        font-size: 17px;
-        font-weight: 600;
-        cursor: pointer;
-        list-style: none;
-        border-radius: 4px;
-        text-wrap: balance;
-        overflow-wrap: break-word;
+        gap: 10px;
+        padding: 5px 8px;
+        color: var(--color-text-secondary);
       }
-      summary::-webkit-details-marker {
-        display: none;
+      .member .avatar {
+        position: relative;
+        width: 32px;
+        height: 32px;
       }
-      summary::after {
+      .member .avatar::after {
         content: "";
-        flex: none;
+        position: absolute;
+        right: -3px;
+        bottom: -3px;
         width: 10px;
         height: 10px;
-        margin-right: 6px;
-        border-right: 2px solid var(--color-text-muted);
-        border-bottom: 2px solid var(--color-text-muted);
-        rotate: 45deg;
-        translate: 0 -3px;
+        border: 3px solid var(--color-window-sunken);
+        border-radius: 50%;
+        background: var(--color-online);
       }
-      details[open] summary::after {
-        rotate: 225deg;
-        translate: 0 3px;
-      }
-      .answer {
-        max-width: 62ch;
-        padding: 0 32px 22px 0;
-        color: var(--color-text-secondary);
-        text-wrap: pretty;
-        overflow-wrap: break-word;
-      }
-      .answer p {
-        margin: 0;
-      }
-      footer {
-        margin-top: auto;
-        border-top: 1px solid var(--color-border);
+      .member em {
+        display: block;
         color: var(--color-text-muted);
-        font-size: 14px;
-      }
-      footer .wrap {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px 24px;
-        padding-top: 20px;
-        padding-bottom: calc(20px + env(safe-area-inset-bottom));
-      }
-      footer nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 20px;
-      }
-      footer a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 32px;
-        color: var(--color-text-secondary);
-      }
-      footer nav a {
-        text-decoration: none;
+        font-size: 12px;
+        font-style: normal;
+        line-height: 1.2;
       }
       @media (hover: hover) {
-        header nav a:hover,
-        footer nav a:hover {
-          color: var(--color-text);
-        }
         .button:hover {
-          background: var(--color-surface-hover);
+          filter: brightness(1.08);
         }
-        .button.primary:hover {
-          background: var(--color-accent-hover);
+        .more:hover {
+          box-shadow:
+            0 0 0 1px var(--color-text-muted),
+            0 1px 2px var(--color-button-drop);
         }
+        .more:hover,
+        footer a:hover,
         summary:hover {
-          color: var(--color-accent-text);
+          color: var(--color-text);
         }
       }
       @media (prefers-reduced-motion: no-preference) {
-        summary::after {
-          transition:
-            rotate 200ms ease-out,
-            translate 200ms ease-out;
+        summary i::after {
+          transition: rotate 220ms cubic-bezier(0.2, 0, 0, 1);
         }
         details::details-content {
           height: 0;
           overflow: clip;
+          opacity: 0;
           transition:
-            height 240ms cubic-bezier(0.2, 0, 0, 1),
-            content-visibility 240ms allow-discrete;
+            height 260ms cubic-bezier(0.2, 0, 0, 1),
+            opacity 200ms ease,
+            content-visibility 260ms allow-discrete;
         }
         details[open]::details-content {
           height: auto;
+          opacity: 1;
+        }
+        .stage {
+          animation: rise 900ms cubic-bezier(0.2, 0, 0, 1) 200ms both;
+        }
+        .cat .eye {
+          animation: blink 5s steps(1) 2s infinite;
+        }
+        .dots i {
+          animation: hop 1.2s ease-in-out infinite;
+        }
+        .dots i:nth-child(2) {
+          animation-delay: 150ms;
+        }
+        .dots i:nth-child(3) {
+          animation-delay: 300ms;
         }
       }
-      @media (max-width: 920px) {
+      @keyframes rise {
+        from {
+          opacity: 0;
+          translate: 0 48px;
+        }
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          scale: 1 1;
+        }
+        96% {
+          scale: 1 0.25;
+        }
+      }
+      @keyframes hop {
+        0%,
+        60%,
+        100% {
+          opacity: 0.4;
+          translate: 0 0;
+        }
+        30% {
+          opacity: 1;
+          translate: 0 -3px;
+        }
+      }
+      @media (max-width: 1080px) {
+        .window {
+          grid-template-columns: 72px 216px minmax(0, 1fr);
+        }
+        .members {
+          display: none;
+        }
+      }
+      @media (max-width: 860px) {
+        .page {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 64px;
+          padding-block: 56px 48px;
+        }
         .hero {
-          grid-template-columns: minmax(0, 1fr);
-          gap: 48px;
-          padding-top: 32px;
-          padding-bottom: 72px;
-        }
-        .faq-grid {
-          grid-template-columns: minmax(0, 1fr);
-          gap: 24px;
-        }
-        .faq {
-          padding-top: 56px;
-          padding-bottom: 72px;
+          position: static;
         }
       }
       @media (max-width: 560px) {
         .wrap {
           padding-inline: 16px;
         }
-        .highlights {
+        .features {
           grid-template-columns: minmax(0, 1fr);
-        }
-        .preview {
-          grid-template-columns: 48px minmax(0, 1fr);
-          height: 380px;
-        }
-        .channels {
-          display: none;
+          gap: 22px;
+          margin-bottom: 48px;
         }
         .actions .button {
           flex: 1 1 auto;
+        }
+        .answer {
+          padding-right: 0;
+        }
+        footer {
+          justify-content: flex-start;
+        }
+        .cat {
+          right: 24px;
+        }
+        .credit {
+          margin-top: 40px;
+        }
+        .window {
+          grid-template-columns: 64px minmax(0, 1fr);
+        }
+        .channels {
+          display: none;
         }
       }
     </style>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <header class="wrap">
-      <a class="brand" href="/">__INSTANCE_ICON__<span>__INSTANCE_NAME__</span></a>
-      <nav aria-label="Site">
-        <a href="/status">Status</a>
-      </nav>
-    </header>
-    <main id="main">
-      <section class="wrap hero" aria-labelledby="welcome">
-        <div>
-          <h1 id="welcome">Welcome to __INSTANCE_NAME__</h1>
-          <p class="tagline">__TAGLINE__</p>
-          <div class="actions">__ACTIONS__</div>
-          <p class="join-note">__JOIN_NOTE__</p>
-          <ul class="highlights">
-            <li>
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="4" y="9" width="12" height="8" rx="2" />
-                <path d="M7 9V6.5a3 3 0 0 1 6 0V9" />
-              </svg>
-              <span><strong>Encrypted DMs</strong>Only you and the people you message can read them.</span>
-            </li>
-            <li>
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="7.5" y="2.5" width="5" height="9" rx="2.5" />
-                <path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5" />
-              </svg>
-              <span><strong>Voice and video</strong>Hop into a channel, share your screen.</span>
-            </li>
-            <li>
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M10 2.5l2.2 4.6 5 .6-3.7 3.5.9 5-4.4-2.4-4.4 2.4.9-5-3.7-3.5 5-.6z" />
-              </svg>
-              <span><strong>Everything unlocked</strong>Premium features and level 3 boosts for everyone.</span>
-            </li>
-            <li>
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="2.5" y="4" width="15" height="11" rx="2" />
-                <path d="M7 17.5h6" />
-              </svg>
-              <span><strong>Nothing to install</strong>Runs in your browser, on desktop and mobile.</span>
-            </li>
-          </ul>
-        </div>
-        <div class="preview" aria-hidden="true">
-          <div class="rail">__INSTANCE_ICON__<hr /><i></i><i></i><i></i></div>
-          <div class="channels">
-            <b>__INSTANCE_NAME__</b>
-            <small>Text channels</small>
-            <div class="channel active">general</div>
-            <div class="channel">art</div>
-            <div class="channel">games</div>
-            <small>Voice channels</small>
-            <div class="channel voice">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2.5 6v4h2.5l3.5 3V3L5 6z" />
-                <path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.5a6 6 0 0 1 0 9" />
-              </svg>
-              Lounge
-            </div>
-          </div>
-          <div class="chat">
-            <div class="chat-head">general</div>
-            <div class="messages">
-              <div class="message">
-                <div class="avatar" style="background: #e8a33d"></div>
-                <div>
-                  <b>mochi</b><time>Today at 18:02</time>
-                  <p>anyone up for a movie night in the lounge later?</p>
-                </div>
-              </div>
-              <div class="message">
-                <div class="avatar" style="background: #5aa9e6"></div>
-                <div>
-                  <b>river</b><time>Today at 18:04</time>
-                  <p>yes!! i'll stream it, someone bring snacks</p>
-                  <span class="reaction">🍿 4</span>
-                </div>
-              </div>
-              <div class="message">
-                <div class="avatar" style="background: #7b5cff"></div>
-                <div>
-                  <b>juniper</b><time>Today at 18:05</time>
-                  <p>joining at 9 :3</p>
-                </div>
-              </div>
-            </div>
-            <div class="composer">Message #general</div>
-          </div>
-        </div>
-      </section>
-      <section class="faq" aria-labelledby="faq-title">
-        <div class="wrap faq-grid">
-          <div class="faq-intro">
-            <h2 id="faq-title">Questions</h2>
-            <p>What to know before you join __INSTANCE_NAME__.</p>
-          </div>
-          <div>__FAQ__</div>
-        </div>
-      </section>
-    </main>
-    <footer>
-      <div class="wrap">
-        <span>this instance is running <a href="https://github.com/meowcorded/meowcord">meowcord</a>!</span>
-        <nav aria-label="Legal">
-          <a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/guidelines">Guidelines</a
-          >__CONTACT__<a href="/status">Status</a>
-        </nav>
+    <main class="wrap page" id="main">
+      <div class="hero">
+        __INSTANCE_ICON__
+        <h1>__INSTANCE_NAME__</h1>
+        <p class="tagline">__TAGLINE__</p>
+        <div class="actions">__ACTIONS__</div>
+        <p class="join-note">__JOIN_NOTE__</p>
       </div>
-    </footer>
+      <div>
+        <ul class="features">
+          <li style="--feature: var(--color-feature-ui)">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2.5" y="4" width="17" height="12" rx="2.5" />
+              <path d="M8 19.5h6M6.5 8.5h4M6.5 11.5h6" />
+            </svg>
+            <strong>Discord's UI</strong>
+            <span>The client you already know, right in your browser.</span>
+          </li>
+          <li style="--feature: var(--color-feature-code)">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7.5 6.5L3 11l4.5 4.5M14.5 6.5L19 11l-4.5 4.5M12.5 4l-3 14" />
+            </svg>
+            <strong>Open-source</strong>
+            <span>Read the code, change it or host your own instance.</span>
+          </li>
+          <li style="--feature: var(--color-feature-lock)">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="4" y="9.5" width="14" height="10" rx="2.5" />
+              <path d="M7.5 9.5V7a3.5 3.5 0 0 1 7 0v2.5M11 13.5v2" />
+            </svg>
+            <strong>End-to-end encrypted</strong>
+            <span>DMs are encrypted on your device, so the server can't read them.</span>
+          </li>
+          <li style="--feature: var(--color-feature-gift)">
+            <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3.5" y="8.5" width="15" height="10.5" rx="2" />
+              <path d="M2.5 8.5h17M11 8.5V19M11 8.5C10 5.5 7 4 6.3 5.8S9.2 8.5 11 8.5zM11 8.5c1-3 4-4.5 4.7-2.7S12.8 8.5 11 8.5z" />
+            </svg>
+            <strong>Zero Nitro</strong>
+            <span>Every perk is free for everyone, and there's nothing to buy.</span>
+          </li>
+        </ul>
+        <section aria-labelledby="questions-title">
+          <h2 id="questions-title">Questions</h2>
+          <div class="faq-list">__FAQ__</div>
+          <button class="more" type="button" hidden>
+            Show more<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+          </button>
+        </section>
+      </div>
+    </main>
+    <div class="wrap">
+      <footer>
+        <a href="/status">Status</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/guidelines">Guidelines</a>__CONTACT__
+      </footer>
+    </div>
+    <div class="finale">
+      <canvas class="glow" aria-hidden="true"></canvas>
+      <div class="wrap">
+        <p class="credit">this instance is running <a href="https://github.com/meowcorded/meowcord">meowcord</a>!</p>
+      </div>
+      <div class="wrap peek" aria-hidden="true">
+        <div class="stage">
+          <svg class="cat" viewBox="0 0 24 19" shape-rendering="crispEdges" aria-hidden="true">
+<path class="fur" d="M3 1h1v1h-1zM14 1h1v1h-1zM3 2h1v1h-1zM14 2h1v1h-1zM3 3h3v1h-3zM12 3h3v1h-3zM2 4h14v1h-14zM2 5h14v1h-14zM2 6h2v1h-2zM6 6h6v1h-6zM14 6h2v1h-2zM2 7h2v1h-2zM6 7h2v1h-2zM10 7h2v1h-2zM14 7h2v1h-2zM2 8h6v1h-6zM10 8h6v1h-6zM3 9h12v1h-12zM3 10h13v1h-13zM2 11h16v1h-16zM2 12h17v1h-17zM2 13h2v1h-2zM5 13h8v1h-8zM14 13h5v1h-5zM15 14h4v1h-4zM16 15h2v1h-2zM16 16h2v1h-2zM17 17h1v1h-1z" />
+<path class="pink" d="M4 2h1v1h-1zM13 2h1v1h-1zM8 7h2v1h-2z" />
+<path class="line" d="M3 0h1v1h-1zM14 0h1v1h-1zM2 1h1v1h-1zM4 1h1v1h-1zM13 1h1v1h-1zM15 1h1v1h-1zM2 2h1v1h-1zM5 2h1v1h-1zM12 2h1v1h-1zM15 2h1v1h-1zM2 3h1v1h-1zM6 3h6v1h-6zM15 3h1v1h-1zM1 4h1v1h-1zM16 4h1v1h-1zM1 5h1v1h-1zM16 5h1v1h-1zM1 6h1v1h-1zM16 6h1v1h-1zM1 7h1v1h-1zM16 7h1v1h-1zM1 8h1v1h-1zM8 8h2v1h-2zM16 8h1v1h-1zM2 9h1v1h-1zM15 9h1v1h-1zM2 10h1v1h-1zM16 10h2v1h-2zM1 11h1v1h-1zM18 11h1v1h-1zM1 12h1v1h-1zM19 12h1v1h-1zM1 13h1v1h-1zM4 13h1v1h-1zM13 13h1v1h-1zM19 13h1v1h-1zM1 14h14v1h-14zM19 14h1v1h-1zM15 15h1v1h-1zM18 15h1v1h-1zM15 16h1v1h-1zM18 16h1v1h-1zM16 17h1v1h-1zM18 17h1v1h-1zM16 18h2v1h-2z" />
+<path class="eye" d="M4 6h2v1h-2zM12 6h2v1h-2zM4 7h2v1h-2zM12 7h2v1h-2z" />
+</svg>
+      <div class="window">
+        <div class="rail">
+          <div class="server current">__INSTANCE_ICON__</div>
+          <hr />
+          <div class="server" style="background: #e8a33d">A</div>
+          <div class="server" style="background: #3f9e6c">G<b>3</b></div>
+          <div class="server" style="background: #4f8fd8">P</div>
+        </div>
+        <div class="channels">
+          <b>__INSTANCE_NAME__</b>
+          <small>Text channels</small>
+          <div class="channel active">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.5L5.5 15.5M12.5 2.5L11 15.5M3 6.5h12.5M2.5 11.5H15" /></svg>general
+          </div>
+          <div class="channel unread">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.5L5.5 15.5M12.5 2.5L11 15.5M3 6.5h12.5M2.5 11.5H15" /></svg>cat-pics
+          </div>
+          <div class="channel">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.5L5.5 15.5M12.5 2.5L11 15.5M3 6.5h12.5M2.5 11.5H15" /></svg>games
+          </div>
+          <small>Voice channels</small>
+          <div class="channel">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2.5 7v4h2.8l3.7 3.2V3.8L5.3 7z" />
+              <path d="M12 6.2a4 4 0 0 1 0 5.6M14 4.2a6.8 6.8 0 0 1 0 9.6" />
+            </svg>
+            Lounge
+          </div>
+          <div class="voice-user speaking"><div class="avatar" style="--avatar: #5aa9e6"></div>river</div>
+          <div class="voice-user"><div class="avatar" style="--avatar: #3fbf7f"></div>sol</div>
+        </div>
+        <div class="chat">
+          <div class="chat-head">
+            <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 2.5L5.5 15.5M12.5 2.5L11 15.5M3 6.5h12.5M2.5 11.5H15" /></svg>general
+          </div>
+          <div class="messages">
+            <div class="message">
+              <div class="avatar" style="--avatar: #e8a33d"></div>
+              <div>
+                <b style="--name: #f0b25a">mochi</b><time>Today at 18:02</time>
+                <p>movie night in the lounge later? river's streaming</p>
+              </div>
+            </div>
+            <div class="message">
+              <div class="avatar" style="--avatar: #5aa9e6"></div>
+              <div>
+                <b style="--name: #7cbcf0">river</b><time>Today at 18:04</time>
+                <p>yes!! someone bring snacks, i'm setting it up now</p>
+                <div class="reactions"><span class="reaction mine">🍿 4</span><span class="reaction">🐈 2</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="typing">
+            <span class="dots"><i></i><i></i><i></i></span><span><b>juniper</b> is typing…</span>
+          </div>
+        </div>
+        <div class="members">
+          <small>Online, 4</small>
+          <div class="member"><div class="avatar" style="--avatar: #e8a33d"></div><span>mochi<em>making popcorn</em></span></div>
+          <div class="member"><div class="avatar" style="--avatar: #5aa9e6"></div><span>river<em>In Lounge</em></span></div>
+          <div class="member"><div class="avatar" style="--avatar: #7b5cff"></div>juniper</div>
+          <div class="member"><div class="avatar" style="--avatar: #3fbf7f"></div>sol</div>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      {
+        const list = document.querySelector(".faq-list");
+        const more = document.querySelector(".more");
+        const items = list.querySelectorAll("details");
+        if (items.length > 5) {
+          list.dataset.collapsed = "";
+          items[4].inert = true;
+          more.hidden = false;
+          more.addEventListener("click", () => {
+            delete list.dataset.collapsed;
+            items[4].inert = false;
+            more.hidden = true;
+            items[4].querySelector("summary").focus();
+          });
+        }
+      }
+      {
+        const canvas = document.querySelector(".glow");
+        const bayer = [0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26, 12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22, 3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25, 15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21];
+        const cell = 3;
+        const draw = () => {
+          const width = Math.ceil(canvas.clientWidth / cell);
+          const height = Math.ceil(canvas.clientHeight / cell);
+          if (!width || !height) return;
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          const image = context.createImageData(width, height);
+          const accent = getComputedStyle(canvas).getPropertyValue("--color-accent").trim();
+          const [r, g, b] = [1, 3, 5].map((at) => Number.parseInt(accent.slice(at, at + 2), 16));
+          const alpha = matchMedia("(prefers-color-scheme: light)").matches ? 70 : 120;
+          const peek = document.querySelector(".peek");
+          const centerY = (peek.offsetTop + 64) / cell;
+          const radiusX = width * 0.48;
+          const credit = document.querySelector(".credit");
+          const radiusY = centerY - (credit.offsetTop + credit.offsetHeight + 4) / cell;
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const dx = (x - width / 2) / radiusX;
+              const dy = (y - centerY) / radiusY;
+              const falloff = 1 - Math.hypot(dx, dy);
+              if (falloff < 0.12) continue;
+              const strength = falloff ** 1.5 * 0.7;
+              if (strength * 64 <= bayer[(y % 8) * 8 + (x % 8)]) continue;
+              const at = (y * width + x) * 4;
+              image.data.set([r, g, b, alpha], at);
+            }
+          }
+          context.putImageData(image, 0, 0);
+        };
+        new ResizeObserver(draw).observe(canvas);
+        matchMedia("(prefers-color-scheme: light)").addEventListener("change", draw);
+      }
+    </script>
   </body>
 </html>
