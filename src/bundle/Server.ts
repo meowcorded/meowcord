@@ -11,7 +11,7 @@ import { SpacebarServer } from "@spacebar/api";
 import { CDNServer } from "@spacebar/cdn";
 import { initDatabase } from "@spacebar/database";
 import { clearCallStateOnStartup, GatewayServer } from "@spacebar/gateway";
-import { Config, brandPage, PUBLIC_ASSETS_FOLDER } from "@spacebar/util";
+import { Config, homePage } from "@spacebar/util";
 import { WebrtcServer } from "@spacebar/webrtc";
 import { ProcessLifecycle } from "../util/util/ProcessLifecycle";
 import { Monitoring } from "../util/monitoring/Monitoring";
@@ -74,12 +74,7 @@ async function main() {
         );
     }
 
-    app.get("/", (req, res) =>
-        res
-            .set("Cache-Control", "no-cache")
-            .type("html")
-            .send(brandPage(fs.readFileSync(path.join(PUBLIC_ASSETS_FOLDER, "index.html"), "utf8"))),
-    );
+    app.get("/", (req, res) => res.set("Cache-Control", "no-cache").type("html").send(homePage()));
 
     await clearCallStateOnStartup();
     await new Promise((resolve) => void server.listen({ port }, () => resolve(undefined)));

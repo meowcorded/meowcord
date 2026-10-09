@@ -1,6 +1,7 @@
 export * from "./ApiError";
 export * from "./BitField";
 export * from "./Branding";
+export * from "./HomePage";
 export * from "./DefaultAvatars";
 //export * from "./Categories";
 export * from "./cdn";

@@ -4,103 +4,695 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>__INSTANCE_NAME__</title>
+    <meta name="description" content="__TAGLINE__" />
     <link rel="icon" href="/favicon.svg" />
     <style>
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url(/assets/66d715454104d24e.woff2) format("woff2");
+      }
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url(/assets/b272b33815319bae.woff2) format("woff2");
+      }
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url(/assets/2df2c3ff74408972.woff2) format("woff2");
+      }
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url(/assets/b2fdbe507d6ce9ef.woff2) format("woff2");
+      }
+      :root {
+        color-scheme: dark;
+        --color-page: #111114;
+        --color-surface: #1a1a1f;
+        --color-surface-raised: #222228;
+        --color-surface-hover: #2a2a31;
+        --color-border: #2e2e36;
+        --color-text: #ececf1;
+        --color-text-secondary: #a3a3ad;
+        --color-text-muted: #75757f;
+        --color-accent: #7b5cff;
+        --color-accent-hover: #6a4be8;
+        --color-accent-text: #b9abff;
+        --color-accent-soft: rgb(123 92 255 / 0.16);
+        --color-online: #3ba55d;
+        --image-outline: rgb(255 255 255 / 0.08);
+        --shadow-window:
+          0 1px 1px rgb(0 0 0 / 0.2), 0 4px 8px rgb(0 0 0 / 0.2), 0 16px 32px rgb(0 0 0 / 0.24),
+          0 40px 80px rgb(0 0 0 / 0.28);
+        font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --color-page: #f6f6f8;
+          --color-surface: #ffffff;
+          --color-surface-raised: #f0f0f3;
+          --color-surface-hover: #e8e8ed;
+          --color-border: #dddde3;
+          --color-text: #1d1d22;
+          --color-text-secondary: #55555f;
+          --color-text-muted: #75757f;
+          --color-accent: #6a4be8;
+          --color-accent-hover: #5a3cd6;
+          --color-accent-text: #5a3cd6;
+          --color-accent-soft: rgb(106 75 232 / 0.1);
+          --color-online: #23a55a;
+          --image-outline: rgb(0 0 0 / 0.08);
+          --shadow-window:
+            0 1px 1px rgb(20 20 40 / 0.04), 0 4px 8px rgb(20 20 40 / 0.05),
+            0 16px 32px rgb(20 20 40 / 0.07), 0 40px 80px rgb(20 20 40 / 0.08);
+        }
+      }
       * {
         box-sizing: border-box;
+      }
+      html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        interpolate-size: allow-keywords;
       }
       body {
         margin: 0;
         min-height: 100svh;
-        background: #17171c;
-        color: #f2f2f5;
-        font:
-          16px/1.6 system-ui,
-          sans-serif;
         display: flex;
         flex-direction: column;
+        background: var(--color-page);
+        color: var(--color-text);
+        font-size: 16px;
+        line-height: 1.6;
+      }
+      a {
+        color: var(--color-accent-text);
+        text-underline-position: from-font;
+        text-decoration-skip-ink: auto;
+        text-underline-offset: 2px;
+      }
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 3px;
       }
       .skip {
         position: absolute;
         top: 8px;
         left: 8px;
-        padding: 8px;
-        background: #17171c;
+        z-index: 1;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: var(--color-surface);
         transform: translateY(-200%);
       }
       .skip:focus-visible {
         transform: none;
       }
-      main {
-        flex: 1;
-        display: grid;
-        place-content: center;
-        padding: 48px 24px;
-        text-align: center;
+      .wrap {
+        width: 100%;
+        max-width: 1120px;
+        margin: 0 auto;
+        padding-inline: 24px;
       }
-      .brand-icon {
-        width: 72px;
-        height: 72px;
-        margin: 0 auto 24px;
-      }
-      h1 {
-        margin: 0 0 16px;
-        font-size: clamp(28px, 5vw, 40px);
-        overflow-wrap: anywhere;
-      }
-      p {
-        margin: 0 0 32px;
-      }
-      a {
-        color: #b9abff;
-        text-underline-offset: 3px;
-      }
-      a:focus-visible {
-        outline: 2px solid currentColor;
-        outline-offset: 4px;
-      }
-      nav {
+      header {
         display: flex;
-        gap: 24px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      nav a {
-        display: inline-flex;
         align-items: center;
-        min-height: 44px;
+        justify-content: space-between;
+        gap: 16px;
+        padding-top: 20px;
+        padding-bottom: 20px;
       }
-      .login {
-        padding: 8px 24px;
-        background: #7b5cff;
-        color: #fff;
-        border-radius: 8px;
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        color: var(--color-text);
+        font-weight: 800;
+        font-size: 18px;
         text-decoration: none;
       }
+      .brand span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .brand .brand-icon {
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        object-fit: cover;
+      }
+      img.brand-icon {
+        outline: 1px solid var(--image-outline);
+        outline-offset: -1px;
+      }
+      header nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: 0 4px;
+        color: var(--color-text-secondary);
+        font-size: 15px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+        align-items: center;
+        gap: 64px;
+        padding-top: 56px;
+        padding-bottom: 96px;
+      }
+      h1 {
+        margin: 0 0 20px;
+        font-size: clamp(36px, 5.2vw, 56px);
+        font-weight: 800;
+        line-height: 1.08;
+        letter-spacing: -0.02em;
+        text-wrap: balance;
+        overflow-wrap: break-word;
+      }
+      .tagline {
+        max-width: 34em;
+        margin: 0 0 32px;
+        color: var(--color-text-secondary);
+        font-size: 19px;
+        text-wrap: pretty;
+        overflow-wrap: break-word;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 22px;
+        border-radius: 10px;
+        background: var(--color-surface-raised);
+        color: var(--color-text);
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        transition:
+          background-color 150ms ease,
+          scale 200ms ease-out;
+      }
+      .button.primary {
+        background: var(--color-accent);
+        color: #fff;
+      }
+      .button:active {
+        scale: 0.97;
+      }
+      .join-note {
+        margin: 16px 0 0;
+        color: var(--color-text-muted);
+        font-size: 14px;
+        text-wrap: pretty;
+      }
+      .highlights {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px 24px;
+        margin: 40px 0 0;
+        padding: 24px 0 0;
+        border-top: 1px solid var(--color-border);
+        list-style: none;
+      }
+      .highlights li {
+        display: flex;
+        gap: 12px;
+        color: var(--color-text-secondary);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .highlights strong {
+        display: block;
+        color: var(--color-text);
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .highlights svg {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        margin-top: 1px;
+        color: var(--color-accent-text);
+      }
+      .preview {
+        position: relative;
+        display: grid;
+        grid-template-columns: 56px 168px minmax(0, 1fr);
+        height: 400px;
+        overflow: hidden;
+        border-radius: 16px;
+        background: var(--color-surface);
+        box-shadow: var(--shadow-window);
+        font-size: 14px;
+        user-select: none;
+        pointer-events: none;
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 0;
+        background: var(--color-page);
+      }
+      .rail .brand-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        object-fit: cover;
+      }
+      .rail hr {
+        width: 24px;
+        margin: 2px 0;
+        border: 0;
+        border-top: 2px solid var(--color-border);
+      }
+      .rail i {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--color-surface-raised);
+      }
+      .rail i:nth-of-type(2) {
+        background: var(--color-accent-soft);
+      }
+      .channels {
+        padding: 14px 8px;
+        border-right: 1px solid var(--color-border);
+        background: var(--color-surface);
+      }
+      .channels b {
+        display: block;
+        margin: 0 8px 14px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .channels small {
+        display: block;
+        margin: 14px 8px 4px;
+        color: var(--color-text-muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .channel {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        color: var(--color-text-muted);
+        white-space: nowrap;
+      }
+      .channel::before {
+        content: "#";
+        font-size: 16px;
+      }
+      .channel.voice::before {
+        content: none;
+      }
+      .channel svg {
+        flex: none;
+        width: 16px;
+        height: 16px;
+      }
+      .channel.active {
+        background: var(--color-surface-hover);
+        color: var(--color-text);
+      }
+      .chat {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--color-surface);
+      }
+      .chat-head {
+        padding: 13px 16px;
+        border-bottom: 1px solid var(--color-border);
+        font-weight: 600;
+      }
+      .chat-head::before {
+        content: "# ";
+        color: var(--color-text-muted);
+      }
+      .messages {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: flex-end;
+        gap: 14px;
+        padding: 16px;
+      }
+      .message {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: 12px;
+        line-height: 1.45;
+      }
+      .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+      }
+      .message b {
+        font-weight: 600;
+      }
+      .message time {
+        margin-left: 6px;
+        color: var(--color-text-muted);
+        font-size: 12px;
+      }
+      .message p {
+        margin: 1px 0 0;
+        color: var(--color-text-secondary);
+      }
+      .reaction {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 6px;
+        padding: 1px 8px;
+        border: 1px solid var(--color-accent);
+        border-radius: 8px;
+        background: var(--color-accent-soft);
+        font-size: 13px;
+      }
+      .composer {
+        margin: 0 16px 16px;
+        padding: 11px 14px;
+        border-radius: 10px;
+        background: var(--color-surface-raised);
+        color: var(--color-text-muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .faq {
+        padding-top: 72px;
+        padding-bottom: 96px;
+        border-top: 1px solid var(--color-border);
+      }
+      .faq-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        gap: 64px;
+      }
+      h2 {
+        margin: 0 0 12px;
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -0.01em;
+        text-wrap: balance;
+      }
+      .faq-intro p {
+        margin: 0;
+        color: var(--color-text-secondary);
+        text-wrap: pretty;
+      }
+      details {
+        border-bottom: 1px solid var(--color-border);
+      }
+      details:first-child {
+        border-top: 1px solid var(--color-border);
+      }
+      summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 64px;
+        padding: 14px 0;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        list-style: none;
+        border-radius: 4px;
+        text-wrap: balance;
+        overflow-wrap: break-word;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary::after {
+        content: "";
+        flex: none;
+        width: 10px;
+        height: 10px;
+        margin-right: 6px;
+        border-right: 2px solid var(--color-text-muted);
+        border-bottom: 2px solid var(--color-text-muted);
+        rotate: 45deg;
+        translate: 0 -3px;
+      }
+      details[open] summary::after {
+        rotate: 225deg;
+        translate: 0 3px;
+      }
+      .answer {
+        max-width: 62ch;
+        padding: 0 32px 22px 0;
+        color: var(--color-text-secondary);
+        text-wrap: pretty;
+        overflow-wrap: break-word;
+      }
+      .answer p {
+        margin: 0;
+      }
       footer {
-        padding: 16px 24px calc(16px + env(safe-area-inset-bottom));
-        text-align: center;
+        margin-top: auto;
+        border-top: 1px solid var(--color-border);
+        color: var(--color-text-muted);
         font-size: 14px;
       }
+      footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 24px;
+        padding-top: 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      }
+      footer nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 20px;
+      }
       footer a {
-        display: inline-block;
-        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        color: var(--color-text-secondary);
+      }
+      footer nav a {
+        text-decoration: none;
+      }
+      @media (hover: hover) {
+        header nav a:hover,
+        footer nav a:hover {
+          color: var(--color-text);
+        }
+        .button:hover {
+          background: var(--color-surface-hover);
+        }
+        .button.primary:hover {
+          background: var(--color-accent-hover);
+        }
+        summary:hover {
+          color: var(--color-accent-text);
+        }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        summary::after {
+          transition:
+            rotate 200ms ease-out,
+            translate 200ms ease-out;
+        }
+        details::details-content {
+          height: 0;
+          overflow: clip;
+          transition:
+            height 240ms cubic-bezier(0.2, 0, 0, 1),
+            content-visibility 240ms allow-discrete;
+        }
+        details[open]::details-content {
+          height: auto;
+        }
+      }
+      @media (max-width: 920px) {
+        .hero {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 48px;
+          padding-top: 32px;
+          padding-bottom: 72px;
+        }
+        .faq-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 24px;
+        }
+        .faq {
+          padding-top: 56px;
+          padding-bottom: 72px;
+        }
+      }
+      @media (max-width: 560px) {
+        .wrap {
+          padding-inline: 16px;
+        }
+        .highlights {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .preview {
+          grid-template-columns: 48px minmax(0, 1fr);
+          height: 380px;
+        }
+        .channels {
+          display: none;
+        }
+        .actions .button {
+          flex: 1 1 auto;
+        }
       }
     </style>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <main id="main">
-      __INSTANCE_ICON__
-      <h1>Welcome to __INSTANCE_NAME__</h1>
-      <p>Chat with your community on this Meowcord instance.</p>
-      <nav aria-label="Instance">
-        <a class="login" href="/login">Sign in</a><a href="/register">Create an account</a
-        ><a href="/status">View status</a>
+    <header class="wrap">
+      <a class="brand" href="/">__INSTANCE_ICON__<span>__INSTANCE_NAME__</span></a>
+      <nav aria-label="Site">
+        <a href="/status">Status</a>
       </nav>
+    </header>
+    <main id="main">
+      <section class="wrap hero" aria-labelledby="welcome">
+        <div>
+          <h1 id="welcome">Welcome to __INSTANCE_NAME__</h1>
+          <p class="tagline">__TAGLINE__</p>
+          <div class="actions">__ACTIONS__</div>
+          <p class="join-note">__JOIN_NOTE__</p>
+          <ul class="highlights">
+            <li>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="4" y="9" width="12" height="8" rx="2" />
+                <path d="M7 9V6.5a3 3 0 0 1 6 0V9" />
+              </svg>
+              <span><strong>Encrypted DMs</strong>Only you and the people you message can read them.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="7.5" y="2.5" width="5" height="9" rx="2.5" />
+                <path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2.5" />
+              </svg>
+              <span><strong>Voice and video</strong>Hop into a channel, share your screen.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 2.5l2.2 4.6 5 .6-3.7 3.5.9 5-4.4-2.4-4.4 2.4.9-5-3.7-3.5 5-.6z" />
+              </svg>
+              <span><strong>Everything unlocked</strong>Premium features and level 3 boosts for everyone.</span>
+            </li>
+            <li>
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="2.5" y="4" width="15" height="11" rx="2" />
+                <path d="M7 17.5h6" />
+              </svg>
+              <span><strong>Nothing to install</strong>Runs in your browser, on desktop and mobile.</span>
+            </li>
+          </ul>
+        </div>
+        <div class="preview" aria-hidden="true">
+          <div class="rail">__INSTANCE_ICON__<hr /><i></i><i></i><i></i></div>
+          <div class="channels">
+            <b>__INSTANCE_NAME__</b>
+            <small>Text channels</small>
+            <div class="channel active">general</div>
+            <div class="channel">art</div>
+            <div class="channel">games</div>
+            <small>Voice channels</small>
+            <div class="channel voice">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2.5 6v4h2.5l3.5 3V3L5 6z" />
+                <path d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.5a6 6 0 0 1 0 9" />
+              </svg>
+              Lounge
+            </div>
+          </div>
+          <div class="chat">
+            <div class="chat-head">general</div>
+            <div class="messages">
+              <div class="message">
+                <div class="avatar" style="background: #e8a33d"></div>
+                <div>
+                  <b>mochi</b><time>Today at 18:02</time>
+                  <p>anyone up for a movie night in the lounge later?</p>
+                </div>
+              </div>
+              <div class="message">
+                <div class="avatar" style="background: #5aa9e6"></div>
+                <div>
+                  <b>river</b><time>Today at 18:04</time>
+                  <p>yes!! i'll stream it, someone bring snacks</p>
+                  <span class="reaction">🍿 4</span>
+                </div>
+              </div>
+              <div class="message">
+                <div class="avatar" style="background: #7b5cff"></div>
+                <div>
+                  <b>juniper</b><time>Today at 18:05</time>
+                  <p>joining at 9 :3</p>
+                </div>
+              </div>
+            </div>
+            <div class="composer">Message #general</div>
+          </div>
+        </div>
+      </section>
+      <section class="faq" aria-labelledby="faq-title">
+        <div class="wrap faq-grid">
+          <div class="faq-intro">
+            <h2 id="faq-title">Questions</h2>
+            <p>What to know before you join __INSTANCE_NAME__.</p>
+          </div>
+          <div>__FAQ__</div>
+        </div>
+      </section>
     </main>
     <footer>
-      this instance is running <a href="https://github.com/meowcorded/meowcord">meowcord</a>!
+      <div class="wrap">
+        <span>this instance is running <a href="https://github.com/meowcorded/meowcord">meowcord</a>!</span>
+        <nav aria-label="Legal">
+          <a href="/terms">Terms</a><a href="/privacy">Privacy</a><a href="/guidelines">Guidelines</a
+          >__CONTACT__<a href="/status">Status</a>
+        </nav>
+      </div>
     </footer>
   </body>
 </html>
