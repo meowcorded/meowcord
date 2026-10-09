@@ -60,7 +60,6 @@ const pickSettings = () => {
         captcha: {
             capMode: captcha.capMode,
             enabled: captcha.enabled,
-            service: captcha.service,
             sitekey: captcha.sitekey,
             instance: captcha.instance,
             secret_set: !!captcha.secret,
@@ -151,7 +150,7 @@ router.patch(
 
         const nextCaptcha = { ...Config.get().security.captcha, ...captcha };
         if (nextCaptcha.capMode === "standalone") {
-            if (nextCaptcha.service !== "cap" || !nextCaptcha.instance || !nextCaptcha.sitekey || !nextCaptcha.secret)
+            if (!nextCaptcha.instance || !nextCaptcha.sitekey || !nextCaptcha.secret)
                 throw new HTTPError("Cap Standalone requires a server URL, site key and secret. Choose Cap core to run verification locally.", 400);
             let url: URL;
             try {

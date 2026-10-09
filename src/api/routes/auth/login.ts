@@ -27,7 +27,7 @@ router.post(
 
         const config = Config.get();
 
-        const captcha = await checkCaptcha(config.login.requireCaptcha, captcha_key, req.ip);
+        const captcha = await checkCaptcha(config.login.requireCaptcha, captcha_key);
         if (captcha) return res.status(400).json(captcha);
 
         const user = await User.findOneOrFail({
@@ -118,7 +118,7 @@ router.post(
  * @returns {"token": null, "mfa": true, "webauthn": true, "sms": true, "ticket": "SOME TICKET JWT TOKEN"}
 
  * Captcha required:
- * @returns {"captcha_key": ["captcha-required"], "captcha_sitekey": null, "captcha_service": "recaptcha"}
+ * @returns {"captcha_key": ["captcha-required"], "captcha_sitekey": "fosscord", "captcha_service": "cap"}
 
  * Sucess:
  * @returns {"token": "USERTOKEN", "settings": {"locale": "en", "theme": "dark"}}
