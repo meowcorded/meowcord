@@ -89,7 +89,6 @@ export interface AdminSettingsUpdateSchema {
     captcha?: {
         capMode?: "core" | "standalone";
         enabled?: boolean;
-        service?: "cap" | "hcaptcha" | "recaptcha" | null;
         sitekey?: string | null;
         /**
          * Write only. An empty string keeps the current secret.

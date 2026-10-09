@@ -8,9 +8,11 @@ The built-in integration uses [Cap core](https://trycap.dev/guide/capjs-core) an
 
 Challenge nonce redemption and solved-token consumption use atomic PostgreSQL operations in the existing expiring `rate_limits` store. Concurrent replays admit one winner. Only token hashes are stored; cleanup uses the existing expiry worker. Public challenge and redemption routes each permit 30 requests per IP per minute independently of the generic rate-limit switch.
 
-In Site settings, choose **Cap core (default)** or **Standalone Server**. Core runs inside the instance and ignores any previously stored standalone URL or credentials. Standalone reveals its server URL, site key and masked secret fields; saving requires all three, with a valid HTTP or HTTPS URL. A blank secret preserves the existing secret.
+In Site settings, choose **Cap core (default)** or **Cap Standalone server**. Cap is the only captcha the server supports, and it dropped hCaptcha and reCAPTCHA. Core runs inside the instance and ignores any previously stored standalone URL or credentials. Standalone reveals its server URL, site key and masked secret fields; saving requires all three, with a valid HTTP or HTTPS URL. A blank secret preserves the existing secret.
 
-Selecting Standalone also applies to required signup verification when the optional sign-in/reset captcha switch is off. An incomplete standalone configuration fails closed instead of falling back to core. Existing optional hCaptcha/reCAPTCHA login/reset adapters remain available; required signup continues to use the selected Cap mode.
+Selecting Standalone also applies to required signup verification when the optional sign-in/reset captcha switch is off. An incomplete standalone configuration fails closed instead of falling back to core. The optional sign-in and password reset checks use the same Cap mode as signup.
+
+The `/verify-email` page shows the Cap widget when email verification asks for a captcha.
 
 ## Native form
 

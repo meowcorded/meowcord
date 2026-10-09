@@ -55,7 +55,6 @@ const cap = {
 if (cap.instance && cap.sitekey && cap.secret)
     Object.assign(section("security", "captcha"), {
         enabled: true,
-        service: "cap",
         capMode: "standalone",
         ...cap,
     });

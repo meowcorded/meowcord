@@ -200,7 +200,7 @@
           "length": {
             "type": "integer"
           },
-          "__@unscopables@751": {
+          "__@unscopables@754": {
             "type": "object",
             "additionalProperties": false,
             "patternProperties": {
@@ -326,16 +326,16 @@
               "with": {
                 "type": "boolean"
               },
-              "__@iterator@749": {
+              "__@iterator@752": {
                 "type": "boolean"
               },
-              "__@unscopables@751": {
+              "__@unscopables@754": {
                 "type": "boolean"
               }
             }
           }
         },
-        "required": ["__@unscopables@751", "length"]
+        "required": ["__@unscopables@754", "length"]
       },
       "FieldErrorResponse": {
         "type": "object",
@@ -2269,7 +2269,7 @@
           "service": {
             "anyOf": [
               {
-                "enum": ["cap", "hcaptcha", "recaptcha"],
+                "const": "cap",
                 "type": "string"
               },
               {
@@ -2665,15 +2665,15 @@
             "type": "string",
             "nullable": true
           },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
           "system_channel_id": {
             "type": "string",
             "nullable": true
           },
           "rules_channel_id": {
-            "type": "string",
-            "nullable": true
-          },
-          "icon": {
             "type": "string",
             "nullable": true
           },
@@ -3339,6 +3339,9 @@
           "banner": {
             "type": "string"
           },
+          "icon": {
+            "type": "string"
+          },
           "channels": {
             "type": "array",
             "items": {
@@ -3358,9 +3361,6 @@
           "rules_channel_id": {
             "type": "string",
             "nullable": true
-          },
-          "icon": {
-            "type": "string"
           },
           "owner_id": {
             "type": "string"
@@ -3920,15 +3920,15 @@
             "type": "string",
             "nullable": true
           },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
           "system_channel_id": {
             "type": "string",
             "nullable": true
           },
           "rules_channel_id": {
-            "type": "string",
-            "nullable": true
-          },
-          "icon": {
             "type": "string",
             "nullable": true
           },
@@ -4002,8 +4002,7 @@
         "type": "object",
         "properties": {
           "instanceName": {
-            "type": "string",
-            "default": "Fosscord"
+            "type": "string"
           },
           "serverName": {
             "type": "string",
@@ -8707,6 +8706,24 @@
             "properties": {
               "requireCaptcha": {
                 "type": "boolean"
+              },
+              "requireVerification": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "defaults": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "type": "object",
+                "properties": {
+                  "verified": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "additionalProperties": false
@@ -8729,17 +8746,6 @@
               },
               "enabled": {
                 "type": "boolean"
-              },
-              "service": {
-                "anyOf": [
-                  {
-                    "enum": ["cap", "hcaptcha", "recaptcha"],
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
               },
               "sitekey": {
                 "type": ["null", "string"]
@@ -10968,7 +10974,7 @@
               "length": {
                 "type": "integer"
               },
-              "__@unscopables@751": {
+              "__@unscopables@754": {
                 "type": "object",
                 "additionalProperties": false,
                 "patternProperties": {
@@ -11094,16 +11100,16 @@
                   "with": {
                     "type": "boolean"
                   },
-                  "__@iterator@749": {
+                  "__@iterator@752": {
                     "type": "boolean"
                   },
-                  "__@unscopables@751": {
+                  "__@unscopables@754": {
                     "type": "boolean"
                   }
                 }
               }
             },
-            "required": ["__@unscopables@751", "length"]
+            "required": ["__@unscopables@754", "length"]
           },
           {
             "type": ["null", "string", "integer", "boolean"]
@@ -14525,7 +14531,7 @@
           "integration_types_config": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Partial%3CRecord%3C%220%22%7C%221%22%2C%7Boauth2_install_params%3F%3A%7Bscopes%3Astring%5B%5D%3Bpermissions%3Astring%3B%7D%7Cundefined%3B%7D%3E%3E"
+                "$ref": "#/components/schemas/Partial%3CRecord%3C%220%22%7C%221%22%2C%7Boauth2_install_params%3F%3A%7Bscopes%3Astring%5B%5D%3Bpermissions%3Astring%3B%7D%7Cnull%7Cundefined%3B%7D%3E%3E"
               },
               {
                 "type": "null"
@@ -30700,6 +30706,27 @@
         "tags": ["api"]
       }
     },
+    "/api/e2ee/embeds/": {
+      "post": {
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "No description available"
+          }
+        },
+        "tags": ["api"],
+        "x-badges": [
+          {
+            "label": "Spacebar-only",
+            "color": "red"
+          }
+        ]
+      }
+    },
     "/api/e2ee/keys/query/": {
       "post": {
         "security": [
@@ -30737,6 +30764,27 @@
                 }
               }
             }
+          }
+        },
+        "tags": ["api"],
+        "x-badges": [
+          {
+            "label": "Spacebar-only",
+            "color": "red"
+          }
+        ]
+      }
+    },
+    "/api/e2ee/soundmoji/": {
+      "post": {
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "No description available"
           }
         },
         "tags": ["api"],
@@ -46565,6 +46613,34 @@
           }
         },
         "tags": ["readyz"],
+        "x-badges": [
+          {
+            "label": "Spacebar-only",
+            "color": "red"
+          }
+        ]
+      }
+    },
+    "/static/email/{file}/": {
+      "get": {
+        "security": [{}],
+        "responses": {
+          "default": {
+            "description": "No description available"
+          }
+        },
+        "parameters": [
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "file"
+          }
+        ],
+        "tags": ["static"],
         "x-badges": [
           {
             "label": "Spacebar-only",

@@ -822,12 +822,9 @@ async function renderOverview(view) {
 
 /* ---------- settings ---------- */
 
-const CAPTCHA_SERVICES = [
-  ["cap-core", "Cap core (default)"],
-  ["cap-standalone", "Standalone Server"],
-  ["", "No optional captcha"],
-  ["hcaptcha", "hCaptcha"],
-  ["recaptcha", "reCAPTCHA"],
+const CAP_MODES = [
+  ["core", "Cap core (default)"],
+  ["standalone", "Cap Standalone server"],
 ];
 
 const RATE_LIMITS = [
@@ -960,12 +957,6 @@ async function renderSettings(view) {
     html`<label class="toggle"
             ><input type="checkbox" name="${path}" data-inverted ${getPath(s, path) ? "" : raw("checked")} /><span>${label}${hint ? html`<span class="hint">${hint}</span>` : ""}</span></label
         >`;
-  const captchaProvider =
-    !s.captcha.service || s.captcha.service === "cap"
-      ? s.captcha.capMode === "standalone"
-        ? "cap-standalone"
-        : "cap-core"
-      : s.captcha.service;
   const captchaState =
     s.captcha.active || s.register.requireCaptcha
       ? html`<span class="badge ok"><span class="dot"></span>${s.register.requireCaptcha ? "Signup verification active" : "Active"}</span>`
@@ -1136,8 +1127,8 @@ ${(s.register.blacklistedUsernames ?? []).join("\n")}</textarea>
                     </div>
                     <div class="stack">
                         <label
-                            >Verification provider<select id="captcha-provider" name="captcha.provider">
-                                ${options(CAPTCHA_SERVICES, captchaProvider)}
+                            >Cap mode<select id="captcha-provider" name="captcha.capMode">
+                                ${options(CAP_MODES, s.captcha.capMode === "standalone" ? "standalone" : "core")}
                             </select></label
                         >
                         <p class="muted" data-cap-core>Cap core runs inside this instance. Signup verification needs no separate server, API key or external service.</p>
@@ -1146,17 +1137,17 @@ ${(s.register.blacklistedUsernames ?? []).join("\n")}</textarea>
                                 >Standalone server URL<span class="hint">The base URL of your Cap Standalone deployment. Browsers must be able to reach it.</span
                                 ><input type="url" name="captcha.instance" value="${s.captcha.instance ?? ""}" placeholder="https://cap.example.com"
                             /></label>
-                            <label data-captcha-credentials
-                                >Site key<span class="hint">Provided by your verification server or captcha provider.</span
+                            <label data-cap-standalone
+                                >Site key<span class="hint">The site key from your Cap Standalone dashboard.</span
                                 ><input name="captcha.sitekey" value="${s.captcha.sitekey ?? ""}"
                             /></label>
-                            <label data-captcha-credentials
+                            <label data-cap-standalone
                                 >Secret<span class="hint"
-                                    >${s.captcha.secret_set ? "A secret is configured. Leave blank to keep it." : "Enter the provider's verification secret."}</span
+                                    >${s.captcha.secret_set ? "A secret is configured. Leave blank to keep it." : "Enter the site's secret from Cap Standalone."}</span
                                 ><input type="password" name="captcha.secret" autocomplete="new-password"
                             /></label>
                         </div>
-                        ${toggle("captcha.enabled", "Enable additional sign-in and password-reset verification", "Uses the selected provider for the actions enabled below. Required signup verification stays active independently.")}
+                        ${toggle("captcha.enabled", "Enable additional sign-in and password-reset verification", "Uses the selected Cap mode for the actions enabled below. Required signup verification stays active independently.")}
                         ${toggle("register.requireCaptcha", "Require Cap to create an account", "Always displays the selected Cap widget before an account can be created. Cap core is the default.")}
                         ${toggle("login.requireCaptcha", "Ask for a captcha when signing in", "")}
                         ${toggle("passwordReset.requireCaptcha", "Ask for a captcha when requesting a password reset", "")}
@@ -1215,24 +1206,15 @@ ${(s.register.blacklistedUsernames ?? []).join("\n")}</textarea>
   );
 
   const syncCaptchaProvider = () => {
-    const provider = $("#captcha-provider", view).value;
-    const standalone = provider === "cap-standalone";
-    const needsKeys = standalone || provider === "hcaptcha" || provider === "recaptcha";
+    const standalone = $("#captcha-provider", view).value === "standalone";
     for (const group of $$("[data-cap-standalone]", view)) {
       group.hidden = !standalone;
       for (const input of $$("input", group)) {
         input.disabled = !standalone;
-        input.required = standalone;
-      }
-    }
-    for (const group of $$("[data-captcha-credentials]", view)) {
-      group.hidden = !needsKeys;
-      for (const input of $$("input", group)) {
-        input.disabled = !needsKeys;
         input.required = standalone && (input.name !== "captcha.secret" || !s.captcha.secret_set);
       }
     }
-    $("[data-cap-core]", view).hidden = provider !== "cap-core";
+    $("[data-cap-core]", view).hidden = standalone;
   };
   $("#captcha-provider", view).addEventListener("change", syncCaptchaProvider);
   syncCaptchaProvider();
@@ -1294,11 +1276,6 @@ ${(s.register.blacklistedUsernames ?? []).join("\n")}</textarea>
     const body = {};
     for (const el of $$("input, textarea, select", form)) {
       if (!el.name || el.disabled) continue;
-      if (el.name === "captcha.provider") {
-        setPath(body, "captcha.service", el.value.startsWith("cap-") ? "cap" : el.value || null);
-        setPath(body, "captcha.capMode", el.value === "cap-standalone" ? "standalone" : "core");
-        continue;
-      }
       if (el.name === "captcha.secret" && !el.value) continue;
       const value =
         el.type === "checkbox"
@@ -1312,9 +1289,7 @@ ${(s.register.blacklistedUsernames ?? []).join("\n")}</textarea>
                   .split("\n")
                   .map((line) => line.trim())
                   .filter(Boolean)
-              : el.name === "captcha.service"
-                ? el.value || null
-                : el.value;
+              : el.value;
       setPath(body, el.name, value);
     }
     const saved = await act(

@@ -24,7 +24,7 @@ router.post(
 
         const config = Config.get();
 
-        const captcha = await checkCaptcha(config.register.requireCaptcha, captcha_key, req.ip);
+        const captcha = await checkCaptcha(config.register.requireCaptcha, captcha_key);
         if (captcha) return res.status(400).json(captcha);
 
         const invalid = () =>

@@ -14,7 +14,7 @@ function fixture({ emailRequired = false, requireVerification = false } = {}) {
         login: { requireVerification },
         defaults: { user: { verified: true } },
         passwordReset: {},
-        security: { captcha: { capMode: "core", service: "cap" } },
+        security: { captcha: { capMode: "core" } },
         limits: { rate: { ip: {}, global: {}, error: {}, routes: { auth: { login: {}, register: {} } } }, e2ee: {}, user: {}, guild: {}, message: {}, channel: {} },
         guild: { discovery: {} },
         externalRequests: {},

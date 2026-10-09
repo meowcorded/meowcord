@@ -39,7 +39,7 @@ test("a complete Cap environment selects standalone explicitly", () => {
             CAP_SECRET_KEY: "synthetic-secret",
         },
         {
-            security: { captcha: { capMode: "core", enabled: true, service: "cap" }, unrelated: true },
+            security: { captcha: { capMode: "core", enabled: true }, unrelated: true },
         },
     );
     assert.equal(config.security.captcha.capMode, "standalone");
@@ -50,7 +50,7 @@ test("a complete Cap environment selects standalone explicitly", () => {
 });
 
 test("absent and partial Cap environment preserve dashboard settings", () => {
-    const captcha = { enabled: true, service: "cap", capMode: "core", customSetting: 7 };
+    const captcha = { enabled: true, capMode: "core", customSetting: 7 };
     for (const env of [{}, { CAP_INSTANCE_URL: "https://cap.example.invalid" }]) {
         const { config, stderr } = configure(env, { security: { captcha } });
         assert.deepEqual(config.security.captcha, captcha);

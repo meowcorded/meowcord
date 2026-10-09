@@ -167,7 +167,7 @@
       "length": {
         "type": "integer"
       },
-      "__@unscopables@751": {
+      "__@unscopables@754": {
         "type": "object",
         "additionalProperties": false,
         "patternProperties": {
@@ -293,16 +293,16 @@
           "with": {
             "type": "boolean"
           },
-          "__@iterator@749": {
+          "__@iterator@752": {
             "type": "boolean"
           },
-          "__@unscopables@751": {
+          "__@unscopables@754": {
             "type": "boolean"
           }
         }
       }
     },
-    "required": ["__@unscopables@751", "length"],
+    "required": ["__@unscopables@754", "length"],
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "FieldErrorResponse": {
@@ -2318,7 +2318,7 @@
       "service": {
         "anyOf": [
           {
-            "enum": ["cap", "hcaptcha", "recaptcha"],
+            "const": "cap",
             "type": "string"
           },
           {
@@ -2739,13 +2739,13 @@
       "banner": {
         "type": ["null", "string"]
       },
+      "icon": {
+        "type": ["null", "string"]
+      },
       "system_channel_id": {
         "type": ["null", "string"]
       },
       "rules_channel_id": {
-        "type": ["null", "string"]
-      },
-      "icon": {
         "type": ["null", "string"]
       },
       "guild_template_code": {
@@ -3453,6 +3453,9 @@
       "banner": {
         "type": "string"
       },
+      "icon": {
+        "type": "string"
+      },
       "channels": {
         "type": "array",
         "items": {
@@ -3470,9 +3473,6 @@
       },
       "rules_channel_id": {
         "type": ["null", "string"]
-      },
-      "icon": {
-        "type": "string"
       },
       "owner_id": {
         "type": "string"
@@ -4036,13 +4036,13 @@
       "banner": {
         "type": ["null", "string"]
       },
+      "icon": {
+        "type": ["null", "string"]
+      },
       "system_channel_id": {
         "type": ["null", "string"]
       },
       "rules_channel_id": {
-        "type": ["null", "string"]
-      },
-      "icon": {
         "type": ["null", "string"]
       },
       "guild_template_code": {
@@ -4112,8 +4112,7 @@
     "type": "object",
     "properties": {
       "instanceName": {
-        "type": "string",
-        "default": "Fosscord"
+        "type": "string"
       },
       "serverName": {
         "type": ["null", "string"],
@@ -8976,17 +8975,6 @@
           "enabled": {
             "type": "boolean"
           },
-          "service": {
-            "anyOf": [
-              {
-                "enum": ["cap", "hcaptcha", "recaptcha"],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "sitekey": {
             "type": ["null", "string"]
           },
@@ -11286,7 +11274,7 @@
           "length": {
             "type": "integer"
           },
-          "__@unscopables@751": {
+          "__@unscopables@754": {
             "type": "object",
             "additionalProperties": false,
             "patternProperties": {
@@ -11412,16 +11400,16 @@
               "with": {
                 "type": "boolean"
               },
-              "__@iterator@749": {
+              "__@iterator@752": {
                 "type": "boolean"
               },
-              "__@unscopables@751": {
+              "__@unscopables@754": {
                 "type": "boolean"
               }
             }
           }
         },
-        "required": ["__@unscopables@751", "length"]
+        "required": ["__@unscopables@754", "length"]
       },
       {
         "type": ["null", "string", "integer", "boolean"]
@@ -14871,7 +14859,7 @@
       "integration_types_config": {
         "anyOf": [
           {
-            "$ref": "#/definitions/Partial%3CRecord%3C%220%22%7C%221%22%2C%7Boauth2_install_params%3F%3A%7Bscopes%3Astring%5B%5D%3Bpermissions%3Astring%3B%7D%7Cundefined%3B%7D%3E%3E"
+            "$ref": "#/definitions/Partial%3CRecord%3C%220%22%7C%221%22%2C%7Boauth2_install_params%3F%3A%7Bscopes%3Astring%5B%5D%3Bpermissions%3Astring%3B%7D%7Cnull%7Cundefined%3B%7D%3E%3E"
           },
           {
             "type": "null"

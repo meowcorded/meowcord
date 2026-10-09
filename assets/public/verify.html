@@ -1,292 +1,202 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spacebar Server</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap"
-      rel="stylesheet"
-    />
-
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Verify your email | __INSTANCE_NAME__</title>
+    <link rel="icon" href="/favicon.svg" />
     <style>
-      body {
-        font-family: "Montserrat", sans-serif;
-        background-color: rgb(10, 10, 10);
-        color: white;
-        font-size: 1.1rem;
-        height: 100vh;
-      }
-
-      * {
-        padding: 0;
-        margin: 0;
-      }
-
-      p {
-        margin-top: 10px;
-      }
-
-      #wordmark {
-        width: min(200px, 50%);
-        margin: 20px;
-        position: absolute;
-        top: 20px;
-        left: 20px;
-      }
-
-      .title {
-        font-size: 1.5rem;
-        font-weight: 600;
-      }
-
-      .subtitle {
-        font-size: 1.1rem;
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
         font-weight: 400;
+        font-display: swap;
+        src: url(/assets/66d715454104d24e.woff2) format("woff2");
       }
-
-      .container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url(/assets/b272b33815319bae.woff2) format("woff2");
       }
-
-      .box {
-        min-width: 350px;
-        width: max(22vw, 350px);
-        padding: 32px;
-        border-radius: 8px;
-        background-color: rgb(32, 32, 32);
-        align-items: center;
+      @font-face {
+        font-family: "gg sans";
+        font-style: normal;
+        font-weight: 800;
+        font-display: swap;
+        src: url(/assets/b2fdbe507d6ce9ef.woff2) format("woff2");
+      }
+      :root {
+        color-scheme: dark;
+        --bg: #121214;
+        --text: #dfe0e2;
+        --muted: #94959c;
+        --accent: #5865f2;
+        --accent-hover: #4752c4;
+        font-family: "gg sans", "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --bg: #f3f3f5;
+          --text: #2f3035;
+          --muted: #5c5d64;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        font-size: 16px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      main {
+        max-width: 440px;
+        padding: 48px 16px;
         display: flex;
         flex-direction: column;
+        align-items: center;
         text-align: center;
       }
-
-      #captcha-container {
-        margin: 20px 0;
+      .brand-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        object-fit: cover;
       }
-
-      .retry-button {
-        margin-top: 15px;
+      h1 {
+        margin: 24px 0 8px;
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1.2;
+        text-wrap: balance;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        text-wrap: pretty;
+      }
+      #cap {
+        margin-top: 24px;
+      }
+      #cap:empty {
+        display: none;
+      }
+      a {
+        margin-top: 32px;
         padding: 10px 20px;
-        background-color: #5865f2;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-family: "Montserrat", sans-serif;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition:
+          background-color 0.15s ease,
+          scale 0.2s ease-out;
       }
-
-      .retry-button:hover {
-        background-color: #4752c4;
+      a[hidden] {
+        display: none;
       }
-
-      .retry-button:disabled {
-        background-color: #666;
-        cursor: not-allowed;
+      a:active {
+        scale: 0.97;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      @media (hover: hover) {
+        a:hover {
+          background: var(--accent-hover);
+        }
       }
     </style>
   </head>
-
   <body>
-    <div class="container">
-      <img
-        alt="Spacebar Logo"
-        id="wordmark"
-        src="https://raw.githubusercontent.com/spacebarchat/spacebarchat/master/branding/svg/Spacebar__Logo-Blue.svg"
-      />
-
-      <div class="box">
-        <p id="title" class="title">Verifying your email</p>
-        <p id="subtitle" class="subtitle">Please wait...</p>
-      </div>
-    </div>
-
+    <main>
+      __INSTANCE_ICON__
+      <h1 id="title">Verifying your email</h1>
+      <p id="subtitle" role="status">This takes a moment.</p>
+      <div id="cap"></div>
+      <a id="open" href="/app" hidden>Open __INSTANCE_NAME__</a>
+    </main>
     <script>
-      window.onload = verify;
+      const title = document.getElementById("title");
+      const subtitle = document.getElementById("subtitle");
+      const capContainer = document.getElementById("cap");
+      const token = new URLSearchParams(location.hash.slice(1)).get("token");
 
-      let captchaConfig = null;
-      let currentToken = null;
+      const show = (heading, text, done = false) => {
+        title.textContent = heading;
+        subtitle.textContent = text;
+        document.getElementById("open").hidden = !done;
+      };
 
-      function verify() {
-        const title = document.getElementById("title");
-        const subtitle = document.getElementById("subtitle");
-
-        // if no fragment identifier in URL, error
-        if (!window.location.hash) {
-          title.innerText = "Invalid Link";
-          subtitle.innerText = "Please check the link and try again.";
-          return;
-        }
-
-        // convert fragment to a key-value pair
-        const fragment = window.location.hash.substring(1);
-        const pairs = fragment.split("&");
-        const values = {};
-        pairs.forEach((pair) => {
-          const [key, value] = pair.split("=");
-          values[key] = value;
+      const loadWidget = () => {
+        if (customElements.get("cap-widget")) return Promise.resolve();
+        Object.assign(window, {
+          CAP_CUSTOM_WASM_URL: "/api/v9/auth/cap/cap_wasm_bg.wasm",
+          CAP_CUSTOM_HASHWX_URL: "/api/v9/auth/cap/hashwx.wasm",
+          CAP_PAKO_URL: "/api/v9/auth/cap/pako.js",
+          CAP_DISABLE_WIDGET_REF: true,
         });
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "/api/v9/auth/cap/widget.js";
+          script.onload = () => (customElements.get("cap-widget") ? resolve() : reject());
+          script.onerror = reject;
+          document.head.append(script);
+        });
+      };
 
-        // ensure token key is present
-        if (!values.token) {
-          title.innerText = "Invalid Link";
-          subtitle.innerText = "Please check the link and try again.";
-          return;
-        }
-
-        currentToken = values.token;
-        performVerification();
-      }
-
-      function performVerification(captchaResponse = null) {
-        const title = document.getElementById("title");
-        const subtitle = document.getElementById("subtitle");
-
-        const requestBody = { token: currentToken };
-        if (captchaResponse) {
-          requestBody.captcha_key = captchaResponse;
-        }
-
-        // make request to server
-        fetch("/api/auth/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            // check for captcha requirement
-            if (data.captcha_key && data.captcha_key.includes("captcha-required")) {
-              captchaConfig = {
-                sitekey: data.captcha_sitekey,
-                service: data.captcha_service,
-              };
-              showCaptcha();
-              return;
-            }
-
-            // check for other error responses
-            if ("message" in data) {
-              title.innerText = "Email Verification Link Expired";
-              subtitle.innerText = "Please request a new verification link.";
-              return;
-            }
-
-            title.innerText = "Email Verified";
-            subtitle.innerText = "You can now login.";
-          })
-          .catch((error) => {
-            title.innerText = "Email Verification Failed";
-            subtitle.innerText = error;
+      const askForCap = async () => {
+        show("Confirm you're human", "Complete the check below to verify your email.");
+        try {
+          const config = await fetch("/api/v9/auth/captcha").then((response) => response.json());
+          if (!config.endpoint) throw new Error();
+          await loadWidget();
+          const widget = document.createElement("cap-widget");
+          widget.setAttribute("data-cap-api-endpoint", config.endpoint);
+          widget.setAttribute("data-cap-disable-haptics", "");
+          widget.addEventListener("solve", (event) => {
+            capContainer.replaceChildren();
+            verify(event.detail.token);
           });
-      }
-
-      function showCaptcha() {
-        const title = document.getElementById("title");
-        const subtitle = document.getElementById("subtitle");
-        const box = document.querySelector(".box");
-
-        title.innerText = "Please complete the captcha";
-        subtitle.innerText = "We need to verify that you're human.";
-
-        // Create captcha container if it doesn't exist
-        let captchaContainer = document.getElementById("captcha-container");
-        if (!captchaContainer) {
-          captchaContainer = document.createElement("div");
-          captchaContainer.id = "captcha-container";
-          box.appendChild(captchaContainer);
+          capContainer.replaceChildren(widget);
+        } catch {
+          show("Verification didn't load", "Refresh the page to try again.");
         }
+      };
 
-        // Load and render captcha based on service
-        if (captchaConfig.service === "hcaptcha") {
-          loadHCaptcha();
-        } else if (captchaConfig.service === "recaptcha") {
-          loadReCaptcha();
+      const verify = async (captchaKey) => {
+        show("Verifying your email", "This takes a moment.");
+        try {
+          const response = await fetch("/api/v9/auth/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token, ...(captchaKey ? { captcha_key: captchaKey } : {}) }),
+          });
+          const data = await response.json();
+          if (data.captcha_service === "cap") return askForCap();
+          if (!response.ok) return show("This link expired", "Request a new verification email from your account settings.");
+          show("Email verified", "You can close this page or keep going in the app.", true);
+        } catch {
+          show("Verification failed", "Check your connection and refresh the page.");
         }
-      }
+      };
 
-      function loadHCaptcha() {
-        if (window.hcaptcha) {
-          renderHCaptcha();
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://js.hcaptcha.com/1/api.js";
-        script.onload = renderHCaptcha;
-        document.head.appendChild(script);
-      }
-
-      function renderHCaptcha() {
-        const captchaContainer = document.getElementById("captcha-container");
-        captchaContainer.innerHTML = "";
-
-        window.hcaptcha.render(captchaContainer, {
-          sitekey: captchaConfig.sitekey,
-          theme: "dark",
-          callback: function (response) {
-            performVerification(response);
-          },
-          "expired-callback": function () {
-            const title = document.getElementById("title");
-            const subtitle = document.getElementById("subtitle");
-            title.innerText = "Captcha Expired";
-            subtitle.innerText = "Please refresh the page and try again.";
-          },
-          "error-callback": function () {
-            const title = document.getElementById("title");
-            const subtitle = document.getElementById("subtitle");
-            title.innerText = "Captcha Error";
-            subtitle.innerText = "Please refresh the page and try again.";
-          },
-        });
-      }
-
-      function loadReCaptcha() {
-        if (window.grecaptcha) {
-          renderReCaptcha();
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://www.google.com/recaptcha/api.js";
-        script.onload = renderReCaptcha;
-        document.head.appendChild(script);
-      }
-
-      function renderReCaptcha() {
-        const captchaContainer = document.getElementById("captcha-container");
-        captchaContainer.innerHTML = "";
-
-        window.grecaptcha.render(captchaContainer, {
-          sitekey: captchaConfig.sitekey,
-          theme: "dark",
-          callback: function (response) {
-            performVerification(response);
-          },
-          "expired-callback": function () {
-            const title = document.getElementById("title");
-            const subtitle = document.getElementById("subtitle");
-            title.innerText = "Captcha Expired";
-            subtitle.innerText = "Please refresh the page and try again.";
-          },
-          "error-callback": function () {
-            const title = document.getElementById("title");
-            const subtitle = document.getElementById("subtitle");
-            title.innerText = "Captcha Error";
-            subtitle.innerText = "Please refresh the page and try again.";
-          },
-        });
-      }
+      if (token) verify();
+      else show("This link is incomplete", "Open the link from your email again, or copy the whole address into your browser.");
     </script>
   </body>
 </html>
