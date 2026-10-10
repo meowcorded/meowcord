@@ -15,6 +15,8 @@ Each feature has one of four marks:
 
 Operational readiness at `/readyz` checks PostgreSQL with `SELECT 1` and a two-second response deadline. The Docker healthcheck also checks the API ping and login page.
 
+[Native Linux hosting](../self-hosting/native.md) documents the same readiness checks for a systemd service running as `meowcord`.
+
 The injected client is Equicord at the commit pinned in `client/vencord.json`, with the local plugins in `client/plugins`. `bun run check:client` checks every local and default upstream patch against the cached build, see [client-patches.md](client-patches.md). Pride and encryption are required.
 
 ## Accounts and sign-in

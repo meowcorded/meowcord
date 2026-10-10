@@ -87,6 +87,8 @@ CHROME_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" PORT=
 
 ## Deploying
 
+[docs/self-hosting/native.md](docs/self-hosting/native.md) covers Linux hosting without Docker under a dedicated `meowcord` service account. Build as a separate normal user, install root-owned runtime files and keep writable state outside the checkout. Its systemd unit and maintenance commands are separate from the development fixtures and Compose updater.
+
 [docs/self-hosting/deploy.md](docs/self-hosting/deploy.md) covers production. `docker-compose.yml` runs PostgreSQL, the server, the SFU and Caddy for TLS on one Linux host, and a one-shot service downloads the web client into a volume on the first start. The same guide covers updating, backups, the phone layout and running behind your own proxy.
 
 Readiness verification runs with `READINESS_TEST_DATABASE=postgres://localhost/postgres bun test scripts/tests/readiness.test.cjs`. It performs only `SELECT 1` and interrupts its own TCP proxy to verify HTTP 200, 503 and recovery. It does not stop PostgreSQL or modify database rows.

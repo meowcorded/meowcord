@@ -1,6 +1,10 @@
 # Setup
 
-This guide covers a Docker instance, a local development instance and the first operator account. [deploy.md](deploy.md) covers production hosting in more detail.
+This guide links to native Linux hosting and covers a Docker instance, a local development instance and the first operator account. [deploy.md](deploy.md) covers Compose hosting and shared deployment details.
+
+## Native Linux
+
+Follow [native.md](native.md) to run the server without Docker as a dedicated, non-login `meowcord` user. It provides a systemd service, separates root-owned application files from writable state, and covers local PostgreSQL, HTTPS, voice, operator provisioning, backups and updates. Use this path for a host installation; the development setup below creates test accounts and is intended for isolated testing.
 
 ## Docker
 

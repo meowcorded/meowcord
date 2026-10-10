@@ -211,7 +211,7 @@ Start with `scripts/dev; scripts/tests`.
 
 ## Upstream and operations (P1)
 
-Start with `CONTRIBUTING.MD; docs/self-hosting/deploy.md; scripts/client.js`.
+Start with `CONTRIBUTING.MD; docs/self-hosting/native.md; docs/self-hosting/deploy.md; scripts/client.js`.
 
 - [ ] **OPS-001** Refresh upstream history and report whether new commits need integration.
 - [ ] **OPS-002** Keep normal pushes directly to main within the user-authorized workflow.
@@ -219,7 +219,7 @@ Start with `CONTRIBUTING.MD; docs/self-hosting/deploy.md; scripts/client.js`.
 - [ ] **OPS-005** Keep localhost demo source synchronized with committed main.
 - [ ] **OPS-007** Document safe current commands for encryption fixtures.
 - [ ] **OPS-008** Publish complete versioned client asset snapshots.
-- [ ] **OPS-009** Verify deployment health and service restart behavior.
+- [ ] **OPS-009** Verify deployment health and service restart behavior. [native.md](../self-hosting/native.md) documents the dedicated service account, systemd unit and health checks. A fresh-host installation, restart and restore exercise remains to be run.
 - [ ] **OPS-010** Keep private keys, credentials and test accounts out of Git. Runtime environment variants are ignored while `.env.example` stays public, and a regression covers environment files, recovery keys, generated account files and client caches. Arbitrary filenames and historical secret scanning remain open.
 - [ ] **OPS-011** Check rollback and asset-cache behavior after client updates.
 - [ ] **OPS-012** Document benchmark and browser limitations honestly.

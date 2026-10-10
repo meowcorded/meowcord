@@ -1,5 +1,7 @@
 # Deploying
 
+For hosting without Docker, follow [native.md](native.md). It runs the bundle and voice SFU under systemd as a dedicated `meowcord` user, with root-owned code, private state and local PostgreSQL. The Compose commands below apply only to Docker installations. Client assets, phone support and the runtime behavior described later also apply to native installations.
+
 ## Docker Compose
 
 `docker-compose.yml` and `Dockerfile` at the repository root run a complete public instance on one Linux host. There are five services:
