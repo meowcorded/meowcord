@@ -66,7 +66,7 @@ function harness() {
         {
             module,
             exports: module.exports,
-            require: (name) => imports[name],
+            require: (name) => (name === "@spacebar/database/Sql" ? require("../../dist/database/Sql.js") : imports[name]),
             console: { log: () => {} },
             setImmediate,
         },

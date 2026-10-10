@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { In } from "typeorm";
 import { route } from "@spacebar/api/middlewares";
@@ -37,11 +38,11 @@ router.get(
         const scope = guild_id === undefined || guild_id === "0" ? null : String(guild_id);
         const db = Message.getRepository();
         const [guildRows, roleRows] = await Promise.all([
-            db.query(`SELECT guild_id FROM members WHERE id = $1 AND ($2::bigint IS NULL OR guild_id = $2)`, [req.user_id, scope]) as Promise<{ guild_id: string }[]>,
+            db.query(`SELECT guild_id FROM members WHERE id = $1 AND (CAST($2 AS bigint) IS NULL OR guild_id = $2)`, [req.user_id, scope]) as Promise<{ guild_id: string }[]>,
             (roles
                 ? db.query(
                       `SELECT mr.role_id FROM members m JOIN member_roles mr ON mr."index" = m."index" JOIN roles r ON r.id = mr.role_id
-                       WHERE m.id = $1 AND ($2::bigint IS NULL OR m.guild_id = $2) AND r.mentionable`,
+                       WHERE m.id = $1 AND (CAST($2 AS bigint) IS NULL OR m.guild_id = $2) AND r.mentionable`,
                       [req.user_id, scope],
                   )
                 : Promise.resolve([])) as Promise<{ role_id: string }[]>,
@@ -116,13 +117,13 @@ router.get(
         for (let round = 0; guildIds.length && ids.length < limit && round < 5; round++) {
             const rows: { id: string; channel_id: string }[] = await Message.getRepository().query(
                 `SELECT id, channel_id FROM (
-                    (SELECT m.id, m.channel_id FROM message_user_mentions u JOIN messages m ON m.id = u.message_id
-                     WHERE u.user_id = $1 AND m.guild_id = ANY($2::bigint[]) AND ($3::bigint IS NULL OR u.message_id < $3) AND m.author_id IS DISTINCT FROM $1 ORDER BY u.message_id DESC LIMIT $4)
+                    SELECT * FROM (SELECT m.id, m.channel_id FROM message_user_mentions u JOIN messages m ON m.id = u.message_id
+                     WHERE u.user_id = $1 AND ${sqlArrayIncludes("m.guild_id", "$2")} AND (CAST($3 AS bigint) IS NULL OR u.message_id < $3) AND m.author_id IS DISTINCT FROM $1 ORDER BY u.message_id DESC LIMIT $4) user_mentions
                     UNION
-                    (SELECT id, channel_id FROM messages WHERE $5 AND mention_everyone AND guild_id = ANY($2::bigint[]) AND ($3::bigint IS NULL OR id < $3) AND author_id IS DISTINCT FROM $1 ORDER BY id DESC LIMIT $4)
+                    SELECT * FROM (SELECT id, channel_id FROM messages WHERE $5 AND mention_everyone AND ${sqlArrayIncludes("guild_id", "$2")} AND (CAST($3 AS bigint) IS NULL OR id < $3) AND author_id IS DISTINCT FROM $1 ORDER BY id DESC LIMIT $4) everyone_mentions
                     UNION
-                    (SELECT m.id, m.channel_id FROM message_role_mentions r JOIN messages m ON m.id = r.message_id
-                     WHERE $6 AND r.role_id = ANY($7::bigint[]) AND m.guild_id = ANY($2::bigint[]) AND ($3::bigint IS NULL OR r.message_id < $3) AND m.author_id IS DISTINCT FROM $1 ORDER BY r.message_id DESC LIMIT $4)
+                    SELECT * FROM (SELECT m.id, m.channel_id FROM message_role_mentions r JOIN messages m ON m.id = r.message_id
+                     WHERE $6 AND ${sqlArrayIncludes("r.role_id", "$7")} AND ${sqlArrayIncludes("m.guild_id", "$2")} AND (CAST($3 AS bigint) IS NULL OR r.message_id < $3) AND m.author_id IS DISTINCT FROM $1 ORDER BY r.message_id DESC LIMIT $4) role_mentions
                 ) mentioned WHERE NOT EXISTS (SELECT 1 FROM mention_dismissals d WHERE d.user_id = $1 AND d.message_id = mentioned.id) ORDER BY id DESC LIMIT $4`,
                 [user.id, guildIds, cursor, batch, everyone, roles, ownedMentionableRoleIds],
             );

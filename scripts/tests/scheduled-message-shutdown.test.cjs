@@ -42,6 +42,7 @@ test("scheduled messages cancel timers, drain the due scan and leave unclaimed m
             clearTimeout: (timer) => cleared.push(timer),
             clearInterval: (timer) => cleared.push(timer),
             require: (name) => {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name === "../../../util/util/ProcessLifecycle") return { ProcessLifecycle: lifecycle };
                 if (name === "@spacebar/database")
                     return {

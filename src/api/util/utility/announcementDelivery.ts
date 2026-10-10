@@ -1,3 +1,4 @@
+import { sqlArrayIncludes, sqlNow, sqlReturning } from "@spacebar/database/Sql";
 import { constants, promises as fs } from "node:fs";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 import path from "node:path";
@@ -73,7 +74,7 @@ export async function announcementCounts(ids: string[]) {
     const db = getDatabase();
     if (!db) throw new Error("Database unavailable");
     const rows = await db.query(
-        `SELECT announcement_id, status, count(*)::int AS count FROM announcement_deliveries WHERE announcement_id = ANY($1::bigint[]) GROUP BY announcement_id,status`,
+        `SELECT announcement_id, status, CAST(count(*) AS integer) AS count FROM announcement_deliveries WHERE ${sqlArrayIncludes("announcement_id", "$1")} GROUP BY announcement_id,status`,
         [ids],
     );
     const counts: Record<string, { queued: number; delivering: number; delivered: number; failed: number }> = {};
@@ -86,10 +87,10 @@ export async function deliverAnnouncement(delivery: AnnouncementDelivery) {
     if (!database) return;
     const token = randomUUID();
     const [claimed] = await database.query(
-        `WITH claimed AS (UPDATE announcement_deliveries SET status='delivering', attempts=attempts+1,
-        message_id=COALESCE(message_id,$3::bigint), lease_token=$4, next_retry_at=now()+interval '10 minutes'
-        WHERE announcement_id=$1 AND user_id=$2 AND status IN ('queued','delivering') AND next_retry_at<=now() RETURNING *) SELECT * FROM claimed`,
-        [delivery.announcement_id, delivery.user_id, Snowflake.generate(), token],
+        sqlReturning(`UPDATE announcement_deliveries SET status='delivering', attempts=attempts+1,
+        message_id=COALESCE(message_id,CAST($3 AS bigint)), lease_token=$4, next_retry_at=$5
+        WHERE announcement_id=$1 AND user_id=$2 AND status IN ('queued','delivering') AND next_retry_at<=${sqlNow()} RETURNING *`),
+        [delivery.announcement_id, delivery.user_id, Snowflake.generate(), token, new Date(Date.now() + 600_000)],
     );
     if (!claimed) return;
     const where = {
@@ -163,7 +164,7 @@ export function runAnnouncementDeliveries() {
         const database = getDatabase();
         if (!database) return;
         const rows: AnnouncementDelivery[] = await database.query(`SELECT d.* FROM announcement_deliveries d JOIN announcements a ON a.id=d.announcement_id
-            WHERE a.durable=true AND d.status IN ('queued','delivering') AND d.next_retry_at <= now() ORDER BY d.next_retry_at,d.announcement_id,d.user_id LIMIT 16`);
+            WHERE a.durable=true AND d.status IN ('queued','delivering') AND d.next_retry_at <= ${sqlNow()} ORDER BY d.next_retry_at,d.announcement_id,d.user_id LIMIT 16`);
         for (let index = 0; index < rows.length; index += 4) {
             if (stopping) break;
             await Promise.allSettled(rows.slice(index, index + 4).map(deliverAnnouncement));

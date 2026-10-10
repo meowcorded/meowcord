@@ -1,3 +1,4 @@
+import { sqlGreatest } from "@spacebar/database/Sql";
 import { scheduleSavedPoll } from "../utility/polls";
 import { Channel, Member, ReadState } from "@spacebar/database";
 import { emitEvent, MessageCreateEvent, Permissions, getPermission, Snowflake } from "@spacebar/util";
@@ -65,7 +66,7 @@ export async function publishUserMessage(opts: {
                     `INSERT INTO read_states (id, channel_id, user_id, last_message_id, mention_count)
                  VALUES ($1, $2, $3, $4, 0)
                  ON CONFLICT (channel_id, user_id) DO UPDATE SET
-                     last_message_id = GREATEST(read_states.last_message_id, EXCLUDED.last_message_id),
+                     last_message_id = ${sqlGreatest("COALESCE(read_states.last_message_id, EXCLUDED.last_message_id)", "EXCLUDED.last_message_id")},
                      mention_count = 0`,
                     [Snowflake.generate(), channel.id, user_id, message.id],
                 ),

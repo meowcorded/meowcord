@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { adminCustomizationTarget, recordAdminCustomization } from "@spacebar/api/util/handlers/AdminUserCustomization";
@@ -33,7 +34,7 @@ router.patch("/", route({ right: "MANAGE_USERS", spacebarOnly: true, requestBody
             .update(User)
             .set({ pride_badges: selected })
             .where("id = :id", { id: target.id })
-            .andWhere("pride_badges IS DISTINCT FROM :selected::text[]", { selected })
+            .andWhere(isSqlite() ? "pride_badges IS DISTINCT FROM :selected" : "pride_badges IS DISTINCT FROM :selected::text[]", { selected })
             .execute();
         if (result.affected) await recordAdminCustomization(req, target.id, "pride_badges", ["pride_badges"], manager);
         return !!result.affected;

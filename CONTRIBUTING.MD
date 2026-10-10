@@ -32,7 +32,7 @@ Use biome and two space indentation.
 
 ## Development
 
-You need Bun 1.4, PostgreSQL (17 is what we run) and, for voice and video, Go 1.24 or newer. Bun installs the packages, runs the server and runs every script. The browser scripts below use `playwright-core` and Google Chrome or another Chromium build.
+You need Bun 1.4, PostgreSQL or SQLite and, for voice and video, Go 1.24 or newer. PostgreSQL remains the backend used by `dev:setup`; SQLite uses Bun's built-in driver. See [databases.md](docs/self-hosting/databases.md) for selecting either backend. Bun installs the packages, runs the server and runs every script. The browser scripts below use `playwright-core` and Google Chrome or another Chromium build.
 
 ```sh
 bun install
@@ -88,6 +88,8 @@ CHROME_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" PORT=
 ## Deploying
 
 [docs/self-hosting/deploy.md](docs/self-hosting/deploy.md) covers production. `docker-compose.yml` runs PostgreSQL, the server, the SFU and Caddy for TLS on one Linux host, and a one-shot service downloads the web client into a volume on the first start. The same guide covers updating, backups, the phone layout and running behind your own proxy.
+
+`bun test scripts/tests/sqlite-database.test.cjs` verifies fresh SQLite migrations, persistence, exact IDs, rollback, rate limit admission and encryption mutation serialization on its own temporary file.
 
 Readiness verification runs with `READINESS_TEST_DATABASE=postgres://localhost/postgres bun test scripts/tests/readiness.test.cjs`. It performs only `SELECT 1` and interrupts its own TCP proxy to verify HTTP 200, 503 and recovery. It does not stop PostgreSQL or modify database rows.
 
@@ -163,7 +165,7 @@ The types in use are `feat`, `fix`, `perf`, `docs`, `test`, `chore`, `build` and
 - Biome lints and formats with `biome.json`, which sets 4-space indents, double quotes and a 180 character line width. `bun run format` rewrites files, `bun run lint` lints them.
 - Every new source file starts with the AGPL header. Copy it from any file in `src`.
 - No code comments. Name things so the code reads without them.
-- Migrations go in `src/database/migration/postgres`. Each one has to be idempotent (`IF NOT EXISTS`, `IF EXISTS`, or a check before the change) and have a timestamp later than every existing migration, made unique with a random suffix, such as `1791514025449`. A fresh database runs the migrations in timestamp order, so don't touch a table that a migration with a later timestamp creates. Test a new migration on a fresh database with `worktree-setup.sh`, which creates a new database and refuses existing ones.
+- Migrations go in `src/database/migration/postgres` or `src/database/migration/sqlite` for their backend. Keep SQLite's baseline immutable after release and add later versioned migrations for schema changes. Both backends must receive equivalent schema changes. Each one has to be idempotent (`IF NOT EXISTS`, `IF EXISTS`, or a check before the change) and have a timestamp later than every existing migration, made unique with a random suffix, such as `1791514025449`. A fresh database runs the migrations in timestamp order, so don't touch a table that a migration with a later timestamp creates. Test PostgreSQL migrations on a fresh database with `worktree-setup.sh`, which creates a new database and refuses existing ones. Test SQLite migrations with `sqlite-database.test.cjs`, which creates and removes its own file.
 - Client changes go into an Equicord plugin in `client/plugins` whenever possible. [docs/development/client-patches.md](docs/development/client-patches.md) has the rules for patches that survive Discord updates.
 - After a change to `client/e2ee`, run `bun run build:e2ee` and commit `assets/public/e2ee` with it. `scripts/build-e2ee.js` bundles it with `Bun.build`.
 - Never commit `assets/cache`, `assets/cache_compressed`, `assets/vencord` or `.vencord`. They hold Discord's code or builds made from it.

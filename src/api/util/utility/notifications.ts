@@ -1,3 +1,4 @@
+import { sqlArrayAggregate, sqlArrayIncludes } from "@spacebar/database/Sql";
 import { In } from "typeorm";
 import { Channel, Guild, Member, PushDevice, Role, ThreadMember, ThreadMemberFlags, WebPushKeys } from "@spacebar/database";
 import { Config, MessageFlags, Permissions, PRESENCE_STALE_AFTER_MS } from "@spacebar/util";
@@ -21,10 +22,10 @@ export interface MentionTarget {
 
 export const loadAudienceMembers = (guild_id: string, filter: { all: boolean; ids: string[]; roles: string[] }): Promise<AudienceMember[]> =>
     Member.query(
-        `SELECT m.id::text AS id, m.settings, COALESCE(array_agg(mr.role_id::text) FILTER (WHERE mr.role_id IS NOT NULL), '{}') AS roles
-         FROM members m LEFT JOIN member_roles mr ON mr.index = m.index
-         WHERE m.guild_id = $1 AND ($2::boolean OR m.id = ANY($3::bigint[]) OR m.index IN (SELECT index FROM member_roles WHERE role_id = ANY($4::bigint[])))
-         GROUP BY m.index`,
+        `SELECT CAST(m.id AS text) AS id, m.settings, ${sqlArrayAggregate("CAST(mr.role_id AS text)", "mr.role_id IS NOT NULL")} AS roles
+         FROM members m LEFT JOIN member_roles mr ON mr."index" = m."index"
+         WHERE m.guild_id = $1 AND (CAST($2 AS boolean) OR ${sqlArrayIncludes("m.id", "$3")} OR m."index" IN (SELECT "index" FROM member_roles WHERE ${sqlArrayIncludes("role_id", "$4")}))
+         GROUP BY m."index"`,
         [guild_id, filter.all, filter.ids, filter.roles],
     );
 
@@ -56,7 +57,7 @@ export async function channelViewChecker(channel: Channel) {
 export async function usersBlocking(author_id: string | undefined, ids: string[]) {
     if (!author_id || !ids.length) return new Set<string>();
     const rows: { id: string }[] = await Member.query(
-        `SELECT from_id::text AS id FROM relationships WHERE to_id = $1 AND (type = $2 OR user_ignored) AND from_id = ANY($3::bigint[])`,
+        `SELECT CAST(from_id AS text) AS id FROM relationships WHERE to_id = $1 AND (type = $2 OR user_ignored) AND ${sqlArrayIncludes("from_id", "$3")}`,
         [author_id, RelationshipType.BLOCKED, ids],
     );
     return new Set(rows.map((r) => r.id));
@@ -65,7 +66,7 @@ export async function usersBlocking(author_id: string | undefined, ids: string[]
 export async function onlineUsers(ids: string[]) {
     if (!ids.length) return new Set<string>();
     const rows: { user_id: string }[] = await Member.query(
-        `SELECT DISTINCT user_id::text AS user_id FROM sessions WHERE user_id = ANY($1::bigint[]) AND status <> 'offline' AND NOT is_admin_session AND last_seen > $2`,
+        `SELECT DISTINCT CAST(user_id AS text) AS user_id FROM sessions WHERE ${sqlArrayIncludes("user_id", "$1")} AND status <> 'offline' AND NOT is_admin_session AND last_seen > $2`,
         [ids, new Date(Date.now() - PRESENCE_STALE_AFTER_MS)],
     );
     return new Set(rows.map((r) => r.user_id));
@@ -146,7 +147,7 @@ const isMuted = (
 
 async function dndUsers(ids: string[]) {
     const rows: { id: string }[] = await Member.query(
-        `SELECT u.id::text AS id FROM users u JOIN user_settings s ON s.index = u."settingsIndex" WHERE u.id = ANY($1::bigint[]) AND s.status = 'dnd'`,
+        `SELECT CAST(u.id AS text) AS id FROM users u JOIN user_settings s ON s."index" = u."settingsIndex" WHERE ${sqlArrayIncludes("u.id", "$1")} AND s.status = 'dnd'`,
         [ids],
     );
     return new Set(rows.map((r) => r.id));
@@ -163,7 +164,7 @@ async function pushRecipients(channel: Channel, message: PushMessage, candidates
     if (channel.isDm()) {
         const open = new Set((channel.recipients ?? []).filter((r) => !r.message_request_timestamp).map((r) => r.user_id));
         const rows: { id: string; settings: UserGuildSettings | null }[] = await Member.query(
-            `SELECT id::text AS id, private_channel_settings AS settings FROM users WHERE id = ANY($1::bigint[])`,
+            `SELECT CAST(id AS text) AS id, private_channel_settings AS settings FROM users WHERE ${sqlArrayIncludes("id", "$1")}`,
             [allowed],
         );
         return new Set(
@@ -276,7 +277,7 @@ export async function dispatchMessagePush(message: PushMessage) {
     const author_id = message.author?.id ?? null;
     const audience = message.guild_id ? `SELECT id FROM members WHERE guild_id = $2` : `SELECT user_id FROM recipients WHERE channel_id = $2`;
     const devices: PushDeviceRow[] = await PushDevice.query(
-        `SELECT d.id::text AS id, d.user_id::text AS user_id, d.token, d.keys FROM push_devices d WHERE d.provider = 'webpush' AND d.user_id IS DISTINCT FROM $1::bigint AND d.user_id IN (${audience})`,
+        `SELECT CAST(d.id AS text) AS id, CAST(d.user_id AS text) AS user_id, d.token, d.keys FROM push_devices d WHERE d.provider = 'webpush' AND d.user_id IS DISTINCT FROM CAST($1 AS bigint) AND d.user_id IN (${audience})`,
         [author_id, message.guild_id ?? message.channel_id],
     );
     if (!devices.length) return;

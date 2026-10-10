@@ -1,3 +1,4 @@
+import { sqlLike } from "@spacebar/database/Sql";
 import { In } from "typeorm";
 import { getDatabase, Member } from "@spacebar/database";
 import { WebSocket, Payload, OPCODES, Send, handleOffloadedGatewayRequest } from "@spacebar/gateway";
@@ -71,9 +72,11 @@ export async function onRequestGuildMembers(this: WebSocket, { d }: Payload) {
 
     const selection = db.getRepository(Member).createQueryBuilder("member").where("member.guild_id = :guild_id", { guild_id });
     if (query) {
-        selection.leftJoin("member.user", "user").andWhere("(user.username ILIKE :query OR user.global_name ILIKE :query OR member.nick ILIKE :query)", {
-            query: `${query}%`,
-        });
+        selection
+            .leftJoin("member.user", "user")
+            .andWhere(`(${sqlLike("user.username", ":query")} OR ${sqlLike("user.global_name", ":query")} OR ${sqlLike("member.nick", ":query")})`, {
+                query: `${query}%`,
+            });
     } else if (user_ids?.length) {
         selection.andWhere("member.id IN (:...user_ids)", { user_ids });
     }

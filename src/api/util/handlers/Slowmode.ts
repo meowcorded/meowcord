@@ -1,3 +1,4 @@
+import { lockTransaction } from "@spacebar/database/Sql";
 import { Channel, Message, RateLimit } from "@spacebar/database";
 import { ApiError, Config, Permissions } from "@spacebar/util";
 import { EntityManager, IsNull } from "typeorm";
@@ -34,7 +35,7 @@ export async function assertMessageSlowmode(channel: Channel, user_id: string, p
 export async function persistWithMessageSlowmode<T>(channel: Channel, user_id: string, permission: Permissions, persist: (manager?: EntityManager) => Promise<T>) {
     if (!requiresMessageSlowmode(channel, permission)) return persist();
     return Message.getRepository().manager.transaction(async (manager) => {
-        await manager.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`message-slowmode:${channel.id}:${user_id}`]);
+        await lockTransaction(manager, `message-slowmode:${channel.id}:${user_id}`);
         await assertMessageSlowmode(channel, user_id, permission, manager);
         const result = await persist(manager);
         await manager.upsert(

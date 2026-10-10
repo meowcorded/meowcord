@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { Message, User, UserViolation } from "@spacebar/database";
 import { Config, emitEvent, getRights, MessageUpdateEvent } from "@spacebar/util";
 import { AccountStandingState, AdminViolationCreateSchema, AppealStatusValue, Embed, EmbedType } from "@spacebar/schemas";
@@ -218,7 +219,10 @@ export async function resolveAppeal(violation: UserViolation, approved: boolean,
 export async function handleAppealVote(message_id: string, voterId: string, emoji: string) {
     if (emoji !== "✅" && emoji !== "❌") return;
     const violation = await UserViolation.createQueryBuilder("v")
-        .where("v.appeal_review_messages @> :match", { match: JSON.stringify([{ message_id }]) })
+        .where(isSqlite() ? "EXISTS (SELECT 1 FROM json_each(v.appeal_review_messages) WHERE value ->> 'message_id' = :message_id)" : "v.appeal_review_messages @> :match", {
+            match: JSON.stringify([{ message_id }]),
+            message_id,
+        })
         .getOne();
     if (!violation || violation.appeal_status !== AppealStatusValue.REVIEW_PENDING) return;
     if (!(await getRights(voterId)).has("MANAGE_USERS")) return;

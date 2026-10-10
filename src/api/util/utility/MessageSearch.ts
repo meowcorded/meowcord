@@ -1,3 +1,4 @@
+import { isSqlite, sqlArrayLength, sqlLike } from "@spacebar/database/Sql";
 import { HTTPError } from "lambert-server/HTTPError";
 import { Brackets, In } from "typeorm";
 import { Channel, Message, Recipient, ThreadMember } from "@spacebar/database";
@@ -6,18 +7,18 @@ import { MessageType } from "@spacebar/schemas";
 
 export type MessageSearchQuery = Record<string, unknown>;
 
-const HAS_FILTERS: Record<string, string> = {
-    link: `m.content ~* 'https?://'`,
-    embed: `jsonb_array_length(m.embeds) > 0`,
+const hasFilters = (): Record<string, string> => ({
+    link: isSqlite() ? `(m.content LIKE '%http://%' OR m.content LIKE '%https://%')` : `m.content ~* 'https?://'`,
+    embed: `${sqlArrayLength("m.embeds")} > 0`,
     file: `EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id)`,
-    image: `(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'image/%') OR m.embeds @> '[{"type":"image"}]' OR m.embeds @> '[{"type":"gifv"}]')`,
-    video: `(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'video/%') OR m.embeds @> '[{"type":"video"}]')`,
+    image: `(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'image/%') OR ${isSqlite() ? "EXISTS (SELECT 1 FROM json_each(m.embeds) WHERE value ->> 'type' IN ('image', 'gifv'))" : `m.embeds @> '[{"type":"image"}]' OR m.embeds @> '[{"type":"gifv"}]'`})`,
+    video: `(EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'video/%') OR ${isSqlite() ? "EXISTS (SELECT 1 FROM json_each(m.embeds) WHERE value ->> 'type' = 'video')" : `m.embeds @> '[{"type":"video"}]'`})`,
     sound: `EXISTS (SELECT 1 FROM attachments a WHERE a.message_id = m.id AND a.content_type LIKE 'audio/%')`,
     sticker: `EXISTS (SELECT 1 FROM message_stickers s WHERE s.message_id = m.id)`,
     poll: `m.poll IS NOT NULL`,
     forward: `m.message_reference->>'type' = '1'`,
-    snapshot: `jsonb_array_length(m.message_snapshots) > 0`,
-};
+    snapshot: `${sqlArrayLength("m.message_snapshots")} > 0`,
+});
 
 const SEARCHABLE_TYPES = [MessageType.DEFAULT, MessageType.REPLY, MessageType.APPLICATION_COMMAND, MessageType.CONTEXT_MENU_COMMAND];
 
@@ -88,7 +89,7 @@ export async function searchMessages(userId: string, channels: Channel[], query:
         .split(/\s+/)
         .filter((word) => word.length);
     words.forEach((word, i) =>
-        qb.andWhere(`m.content ILIKE :word${i}`, {
+        qb.andWhere(`${sqlLike("m.content", `:word${i}`)}`, {
             [`word${i}`]: `%${word.replace(/[\\%_]/g, (c) => `\\${c}`)}%`,
         }),
     );
@@ -125,9 +126,9 @@ export async function searchMessages(userId: string, channels: Channel[], query:
         });
 
     const has = list(query.has);
-    const wanted = has.filter((x) => !x.startsWith("-")).flatMap((x) => HAS_FILTERS[x] ?? []);
+    const wanted = has.filter((x) => !x.startsWith("-")).flatMap((x) => hasFilters()[x] ?? []);
     if (wanted.length) qb.andWhere(`(${wanted.join(" OR ")})`);
-    for (const clause of has.filter((x) => x.startsWith("-")).flatMap((x) => HAS_FILTERS[x.slice(1)] ?? [])) qb.andWhere(`NOT (${clause})`);
+    for (const clause of has.filter((x) => x.startsWith("-")).flatMap((x) => hasFilters()[x.slice(1)] ?? [])) qb.andWhere(`NOT (${clause})`);
 
     const pinned = bool(query.pinned);
     if (pinned !== undefined) qb.andWhere(pinned ? "m.pinned_at IS NOT NULL" : "m.pinned_at IS NULL");

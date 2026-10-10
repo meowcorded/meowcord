@@ -1,3 +1,4 @@
+import { sqlLike } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { In } from "typeorm";
 import { HTTPError } from "lambert-server/HTTPError";
@@ -56,7 +57,7 @@ router.get(
             .offset(offset);
 
         if (/^\d{15,20}$/.test(q)) query.where("guild.id = :id", { id: q });
-        else if (q) query.where("guild.name ILIKE :q", { q: `%${q.replace(/[\\%_]/g, "\\$&")}%` });
+        else if (q) query.where(`${sqlLike("guild.name", ":q")}`, { q: `%${q.replace(/[\\%_]/g, "\\$&")}%` });
 
         const [{ entities, raw }, total] = await Promise.all([query.getRawAndEntities(), query.getCount()]);
 

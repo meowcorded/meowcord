@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { Router, Response, Request } from "express";
 import { Raw } from "typeorm";
 import { route } from "@spacebar/api/middlewares";
@@ -32,7 +33,7 @@ router.get(
                     { approved: true, uploader_id: req.user_id },
                     {
                         approved: true,
-                        allowed_user_ids: Raw((columnAlias) => `${columnAlias} && ARRAY[:req_uid]::int8[]`, {
+                        allowed_user_ids: Raw((columnAlias) => sqlArrayIncludes("CAST(:req_uid AS bigint)", columnAlias), {
                             req_uid: req.user_id,
                         }),
                     },

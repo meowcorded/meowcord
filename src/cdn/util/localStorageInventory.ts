@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { join, resolve, dirname } from "node:path";
@@ -9,6 +10,9 @@ export interface InventoryConnection {
     connect(): Promise<unknown>;
     release(): Promise<unknown>;
     query(sql: string, parameters?: unknown[]): Promise<unknown>;
+    startTransaction?(): Promise<void>;
+    commitTransaction?(): Promise<void>;
+    rollbackTransaction?(): Promise<void>;
 }
 export interface InventoryDatabase {
     createQueryRunner(): InventoryConnection;
@@ -214,12 +218,16 @@ export class LocalStorageInventory {
         await connection.connect();
         let locked = false;
         try {
-            const [result] = await this.query<{ locked: boolean }>(connection, "SELECT pg_try_advisory_lock(hashtextextended($1,17013)) AS locked", [this.namespace]);
+            const [result] = isSqlite()
+                ? (await connection.startTransaction!(), [{ locked: true }])
+                : await this.query<{ locked: boolean }>(connection, "SELECT pg_try_advisory_lock(hashtextextended($1,17013)) AS locked", [this.namespace]);
             if (!result.locked) throw new HTTPError("Storage inventory is busy", 409);
             locked = true;
             await this.barrier.assertQuiescent();
             await this.assertNoOperations();
-            return await callback(connection);
+            const resultValue = await callback(connection);
+            if (isSqlite()) await connection.commitTransaction!();
+            return resultValue;
         } catch (error) {
             await this.closeScan();
             if (locked) {
@@ -230,7 +238,7 @@ export class LocalStorageInventory {
             if (error instanceof HTTPError) throw error;
             throw failure("INVENTORY_INTERRUPTED");
         } finally {
-            if (locked) await connection.query("SELECT pg_advisory_unlock(hashtextextended($1,17013))", [this.namespace]).catch(() => {});
+            if (locked && !isSqlite()) await connection.query("SELECT pg_advisory_unlock(hashtextextended($1,17013))", [this.namespace]).catch(() => {});
             await connection.release();
         }
     }
@@ -246,13 +254,16 @@ export class LocalStorageInventory {
         }
     }
     private async transaction<T>(connection: InventoryConnection, callback: () => Promise<T>): Promise<T> {
-        await connection.query("BEGIN");
+        if (isSqlite()) await connection.startTransaction!();
+        else await connection.query("BEGIN");
         try {
             const result = await callback();
-            await connection.query("COMMIT");
+            if (isSqlite()) await connection.commitTransaction!();
+            else await connection.query("COMMIT");
             return result;
         } catch (error) {
-            await connection.query("ROLLBACK");
+            if (isSqlite()) await connection.rollbackTransaction!();
+            else await connection.query("ROLLBACK");
             throw error;
         }
     }
@@ -278,8 +289,8 @@ export class LocalStorageInventory {
             await this.transaction(connection, async () => {
                 const [usage] = await this.query<{ count: string }>(
                     connection,
-                    `SELECT ((SELECT COUNT(*) FROM storage_quota_objects WHERE namespace=$1)+(SELECT COUNT(*) FROM storage_quota_operations WHERE namespace=$1)+
-     (SELECT COUNT(*) FROM storage_quota_accounts WHERE namespace=$1 AND (used_bytes<>0 OR reserved_bytes<>0 OR used_objects<>0 OR reserved_objects<>0 OR state='ready')))::text AS count`,
+                    `SELECT CAST(((SELECT COUNT(*) FROM storage_quota_objects WHERE namespace=$1)+(SELECT COUNT(*) FROM storage_quota_operations WHERE namespace=$1)+
+     (SELECT COUNT(*) FROM storage_quota_accounts WHERE namespace=$1 AND (used_bytes<>0 OR reserved_bytes<>0 OR used_objects<>0 OR reserved_objects<>0 OR state='ready'))) AS text) AS count`,
                     [this.namespace],
                 );
                 if (usage.count !== "0") throw failure("EXISTING_LEDGER_REQUIRES_RECONCILIATION");
@@ -316,8 +327,8 @@ export class LocalStorageInventory {
             metadata_bytes: string;
         }>(
             connection,
-            `SELECT COUNT(*)::text AS objects,COALESCE(SUM(bytes),0)::text AS bytes,
-   COUNT(*) FILTER(WHERE principal='system:metadata')::text AS metadata_objects,COALESCE(SUM(bytes) FILTER(WHERE principal='system:metadata'),0)::text AS metadata_bytes
+            `SELECT CAST(COUNT(*) AS text) AS objects,CAST(COALESCE(SUM(bytes),0) AS text) AS bytes,
+   CAST(COUNT(*) FILTER(WHERE principal='system:metadata') AS text) AS metadata_objects,CAST(COALESCE(SUM(bytes) FILTER(WHERE principal='system:metadata'),0) AS text) AS metadata_bytes
    FROM storage_quota_objects WHERE namespace=$1`,
             [this.namespace],
         );
@@ -378,8 +389,8 @@ export class LocalStorageInventory {
                 metadata_bytes: string;
             }>(
                 connection,
-                `SELECT COUNT(*)::text AS count,COUNT(*) FILTER(WHERE principal='system:metadata')::text AS metadata_count,
-    COALESCE(SUM(bytes) FILTER(WHERE principal='system:metadata'),0)::text AS metadata_bytes FROM storage_quota_objects WHERE namespace=$1`,
+                `SELECT CAST(COUNT(*) AS text) AS count,CAST(COUNT(*) FILTER(WHERE principal='system:metadata') AS text) AS metadata_count,
+    CAST(COALESCE(SUM(bytes) FILTER(WHERE principal='system:metadata'),0) AS text) AS metadata_bytes FROM storage_quota_objects WHERE namespace=$1`,
                 [this.namespace],
             );
             if (
@@ -445,7 +456,7 @@ export class LocalStorageInventory {
         await this.transaction(connection, async () => {
             const [pending] = await this.query<{ count: string }>(
                 connection,
-                "SELECT COUNT(*)::text AS count FROM storage_inventory_work WHERE namespace=$1 AND state<>'complete'",
+                `SELECT CAST(COUNT(*) AS text) AS count FROM storage_inventory_work WHERE namespace=$1 AND state<>'complete'`,
                 [this.namespace],
             );
             if (pending.count !== "0") throw failure("INCOMPLETE_WORK");
@@ -507,7 +518,7 @@ export class LocalStorageInventory {
                 if (entry.isDirectory()) {
                     if (!verify) {
                         const identity = await this.directoryIdentity(filename);
-                        const [count] = await this.query<{ count: string }>(connection, "SELECT COUNT(*)::text AS count FROM storage_inventory_work WHERE namespace=$1", [
+                        const [count] = await this.query<{ count: string }>(connection, `SELECT CAST(COUNT(*) AS text) AS count FROM storage_inventory_work WHERE namespace=$1`, [
                             this.namespace,
                         ]);
                         if (BigInt(count.count) >= BigInt(this.policy.maxEntries)) throw failure("DIRECTORY_BOUND");

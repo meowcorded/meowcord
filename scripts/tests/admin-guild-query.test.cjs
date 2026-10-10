@@ -25,6 +25,7 @@ function harness() {
         module,
         exports: module.exports,
         require(name) {
+            if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
             if (name === "express")
                 return {
                     Router: () => ({

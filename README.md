@@ -11,7 +11,7 @@ encryption has not yet been audited, and you will find plenty of bugs and issues
 
 ## getting started
 
-follow [the setup guide](docs/self-hosting/setup.md) for Docker, local development and the source archive.
+follow [the setup guide](docs/self-hosting/setup.md) for Docker, local development and the source archive. the server supports [PostgreSQL and SQLite](docs/self-hosting/databases.md).
 
 for Docker, copy `.env.example` to `.env`, set your instance domain, PostgreSQL password and public voice address, then run:
 

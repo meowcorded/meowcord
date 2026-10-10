@@ -148,8 +148,8 @@ export class ActivityInstances {
 
     static async sweep() {
         await getDatabase()?.query(
-            `DELETE FROM "activity_instance_participants" p USING "activity_instances" i WHERE p."instance_id" = i."id" AND NOT EXISTS (SELECT 1 FROM "voice_states" v WHERE v."user_id" = p."user_id" AND v."channel_id" = i."channel_id" AND v."session_id" = p."session_id")`,
+            `DELETE FROM "activity_instance_participants" AS p WHERE EXISTS (SELECT 1 FROM "activity_instances" i WHERE p."instance_id" = i."id" AND NOT EXISTS (SELECT 1 FROM "voice_states" v WHERE v."user_id" = p."user_id" AND v."channel_id" = i."channel_id" AND v."session_id" = p."session_id"))`,
         );
-        await getDatabase()?.query(`DELETE FROM "activity_instances" i WHERE NOT EXISTS (SELECT 1 FROM "activity_instance_participants" p WHERE p."instance_id" = i."id")`);
+        await getDatabase()?.query(`DELETE FROM "activity_instances" AS i WHERE NOT EXISTS (SELECT 1 FROM "activity_instance_participants" p WHERE p."instance_id" = i."id")`);
     }
 }

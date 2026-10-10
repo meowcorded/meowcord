@@ -1,9 +1,10 @@
 import path from "node:path";
 import fs from "node:fs";
 import { green, red, yellow } from "picocolors";
-import { DataSource } from "typeorm";
+import { DataSource, MigrationExecutor, type QueryRunner } from "typeorm";
 import { ProcessLifecycle } from "../util/util/ProcessLifecycle";
-import { PostgresDataSourceOptions } from "typeorm/driver/postgres/PostgresDataSourceOptions";
+import { SqliteDataSource } from "./SqliteDataSource";
+import { databaseBackend, sqlitePath } from "./Sql";
 
 // UUID extension option is only supported with postgres
 // We want to generate all id's with Snowflakes that's why we have our own BaseEntity class
@@ -21,38 +22,34 @@ if (process.argv[1]?.endsWith("scripts/openapi.js")) isHeadlessProcess = true;
 if (!process.env.DATABASE && !isHeadlessProcess) {
     console.log(
         red(
-            "DATABASE environment variable not set! Please set it to your database connection string.\n" + "Example for postgres: postgres://user:password@localhost:5432/database",
+            "DATABASE environment variable not set! Please set it to your database connection string.\n" +
+                "Examples: postgres://user:password@localhost:5432/database or sqlite:db/meowcord.sqlite",
         ),
     );
     process.exit(1);
 }
 
-const dbConnectionString = process.env.DATABASE!;
-export const DatabaseType = isHeadlessProcess ? "postgres" : dbConnectionString.split(":")[0]?.replace("+srv", "");
+export const DatabaseType = databaseBackend();
 const applyMigrations = process.env.APPLY_DB_MIGRATIONS !== "false";
 const MIGRATIONLOCK = 1;
+const commonOptions = {
+    entities: [path.join(__dirname, "entities", "*.js")],
+    synchronize: process.env.DB_SYNC === "true",
+    logging: process.env.DB_LOGGING === "true",
+    migrations: applyMigrations ? [path.join(__dirname, "migration", DatabaseType, "*.js")] : [],
+    invalidWhereValuesBehavior: { null: "sql-null" as const, undefined: "ignore" as const },
+};
 export const DataSourceOptions = isHeadlessProcess
     ? (undefined as unknown as DataSource)
-    : new DataSource({
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          //@ts-ignore type 'string' is not 'sqlite' | 'postgres' | etc etc
-          type: DatabaseType,
-          charset: "utf8mb4",
-          url: process.env.DATABASE,
-          entities: [path.join(__dirname, "entities", "*.js")],
-          synchronize: !!process.env.DB_SYNC,
-          logging: !!process.env.DB_LOGGING,
-          bigNumberStrings: false,
-          supportBigNumbers: true,
-          name: "default",
-          migrations: applyMigrations ? [path.join(__dirname, "migration", DatabaseType, "*.js")] : [],
-          invalidWhereValuesBehavior: {
-              null: "sql-null",
-              undefined: "ignore",
-          },
-          connectTimeoutMS: 30000,
-          poolSize: Number(process.env.DB_POOL_SIZE) || 20,
-      } satisfies PostgresDataSourceOptions);
+    : DatabaseType === "sqlite"
+      ? new SqliteDataSource({ ...commonOptions, database: sqlitePath(process.env.DATABASE!) })
+      : new DataSource({
+            ...commonOptions,
+            type: "postgres",
+            url: process.env.DATABASE,
+            connectTimeoutMS: 30000,
+            poolSize: Number(process.env.DB_POOL_SIZE) || 20,
+        });
 
 // Gets the existing database connection
 export function getDatabase(): DataSource | null {
@@ -85,7 +82,7 @@ const databaseErrorCode = (error: unknown) => {
 
 async function initializeDatabase(): Promise<DataSource> {
     if (!process.env.DB_SYNC) {
-        const supported = ["postgres"];
+        const supported = ["postgres", "sqlite"];
         if (!supported.includes(DatabaseType)) {
             console.log(
                 "[Database]" +
@@ -121,7 +118,11 @@ async function initializeDatabase(): Promise<DataSource> {
     if (!dbConnection) throw new Error("[Database] FATAL: Could not connect to database!");
 
     // Crude way of detecting if the migrations table exists.
-    const dbExists = async () => {
+    const dbExists = async (queryRunner?: QueryRunner) => {
+        if (DatabaseType === "sqlite") {
+            const rows = await (queryRunner ?? dbConnection!).query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='config'");
+            return rows.length > 0;
+        }
         try {
             // do not globally import to avoid circular references
             await require("./entities/Config").ConfigEntity.count();
@@ -135,9 +136,12 @@ async function initializeDatabase(): Promise<DataSource> {
         const qr = dbConnection.createQueryRunner();
         let migrationLockAcquired = false;
         try {
-            await qr.query(`Select pg_advisory_lock(${MIGRATIONLOCK})`);
-            migrationLockAcquired = true;
-            if (!(await dbExists())) {
+            if (DatabaseType === "sqlite") await qr.startTransaction();
+            if (DatabaseType === "postgres") {
+                await qr.query(`Select pg_advisory_lock(${MIGRATIONLOCK})`);
+                migrationLockAcquired = true;
+            }
+            if (!(await dbExists(qr))) {
                 console.log("[Database] This appears to be a fresh database. Running initial DDL.");
                 const initialPath = path.join(__dirname, "migration", DatabaseType + "-initial.js");
                 if (fs.existsSync(initialPath)) {
@@ -146,9 +150,13 @@ async function initializeDatabase(): Promise<DataSource> {
                 } else console.log("[Database] No initial migration file found at '", initialPath, "', skipping.");
             }
             console.log("[Database] Applying missing migrations, if any.", process.env.APPLY_DB_MIGRATIONS);
-            await dbConnection.runMigrations();
+            if (DatabaseType === "sqlite") {
+                await new MigrationExecutor(dbConnection, qr).executePendingMigrations();
+                await qr.commitTransaction();
+            } else await dbConnection.runMigrations();
         } finally {
             try {
+                if (qr.isTransactionActive) await qr.rollbackTransaction();
                 if (migrationLockAcquired) await qr.query(`Select pg_advisory_unlock(${MIGRATIONLOCK})`);
             } finally {
                 await qr.release();

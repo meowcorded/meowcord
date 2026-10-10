@@ -1,3 +1,4 @@
+import { lockTransaction } from "@spacebar/database/Sql";
 import { Channel, getDatabase, Message, Recipient, User, UserSettings } from "@spacebar/database";
 import { Config, Rights, Snowflake, uploadMessageFiles } from "@spacebar/util";
 import { ChannelType, Embed, Reaction, UserFlags } from "@spacebar/schemas";
@@ -47,7 +48,7 @@ async function loadSystemAccount(kind: SystemAccountKind): Promise<User> {
     const database = getDatabase();
     if (!database) throw new Error("Database unavailable");
     return database.transaction(async (manager) => {
-        await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`system-account:${kind}`]);
+        await lockTransaction(manager, `system-account:${kind}`);
         const users = manager.getRepository(User);
         const settingsRepository = manager.getRepository(UserSettings);
         const spec = ACCOUNTS[kind];

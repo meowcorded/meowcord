@@ -67,7 +67,10 @@ export function ensureStandardStickerPacks(): Promise<void> {
                     })),
                 );
                 if (pack.cover_sticker_id)
-                    await manager.query(`UPDATE sticker_packs SET cover_sticker_id = $1::varchar, "coverStickerId" = $1::bigint WHERE id = $2`, [pack.cover_sticker_id, pack.id]);
+                    await manager.query(`UPDATE sticker_packs SET cover_sticker_id = CAST($1 AS varchar), "coverStickerId" = CAST($1 AS bigint) WHERE id = $2`, [
+                        pack.cover_sticker_id,
+                        pack.id,
+                    ]);
             }
         });
         console.log(`[StickerPacks] imported ${sticker_packs.length} standard sticker packs`);

@@ -28,6 +28,7 @@ function loadInsights(query, transaction, clock = Date, lifecycle = { eventEmitt
             clearInterval,
             ...timers,
             require(name) {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name === "../../util/util/ProcessLifecycle") return { ProcessLifecycle: lifecycle };
                 if (name === "../Database") return { getDatabase: () => ({ query, transaction }) };
                 if (name === "lambert-server/HTTPError")

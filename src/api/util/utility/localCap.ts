@@ -1,3 +1,4 @@
+import { sqlReturning } from "@spacebar/database/Sql";
 import { createHash, createHmac } from "node:crypto";
 import { RateLimit } from "@spacebar/database";
 import { Config } from "@spacebar/util";
@@ -41,7 +42,7 @@ export async function redeemRegistrationChallenge(body: unknown) {
 
 export async function consumeRegistrationToken(token: string) {
     if (!token || token.length > 512) return false;
-    const [rows] = await RateLimit.query(`DELETE FROM rate_limits WHERE id = $1 AND expires_at > $2 RETURNING id`, [tokenKey(token), new Date()]);
+    const rows = await RateLimit.query(sqlReturning(`DELETE FROM rate_limits WHERE id = $1 AND expires_at > $2 RETURNING id`), [tokenKey(token), new Date()]);
     return rows.length === 1;
 }
 

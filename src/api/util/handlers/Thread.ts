@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 import { In } from "typeorm";
 import { Channel, Member, Message, ThreadMember, ThreadMemberFlags } from "@spacebar/database";
@@ -194,7 +195,7 @@ export function archiveInactiveThreads() {
 async function archiveInactiveThreadsOnce() {
     const threads = await Channel.createQueryBuilder("channel")
         .where("channel.type IN (:...types)", { types: THREAD_TYPES })
-        .andWhere("(channel.thread_metadata ->> 'archived')::boolean = false")
+        .andWhere(isSqlite() ? "channel.thread_metadata ->> 'archived' = 0" : "(channel.thread_metadata ->> 'archived')::boolean = false")
         .getMany();
     const now = Date.now();
     for (const thread of threads) {

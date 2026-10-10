@@ -1,3 +1,4 @@
+import { sqlArrayIncludes, sqlLike } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { Brackets } from "typeorm";
 import { route } from "@spacebar/api/middlewares";
@@ -26,11 +27,16 @@ router.get(
 
         const base = () => {
             const qb = Guild.createQueryBuilder("guild").where("guild.discovery_excluded = false");
-            if (!Config.get().guild.discovery.showAllGuilds) qb.andWhere(":feature = ANY(guild.features)", { feature: "DISCOVERABLE" });
+            if (!Config.get().guild.discovery.showAllGuilds) qb.andWhere(`${sqlArrayIncludes(":feature", "guild.features")}`, { feature: "DISCOVERABLE" });
             if (hidden.length) qb.andWhere("guild.id NOT IN (:...hidden)", { hidden });
             if (!term) return qb;
             return qb.andWhere(
-                new Brackets((b) => b.where("guild.name ILIKE :pattern").orWhere("guild.description ILIKE :pattern").orWhere("guild.vanity_url_code ILIKE :pattern")),
+                new Brackets((b) =>
+                    b
+                        .where(`${sqlLike("guild.name", ":pattern")}`)
+                        .orWhere(`${sqlLike("guild.description", ":pattern")}`)
+                        .orWhere(`${sqlLike("guild.vanity_url_code", ":pattern")}`),
+                ),
                 { pattern: `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%` },
             );
         };
@@ -50,7 +56,7 @@ router.get(
                 ? (
                       await base()
                           .select("guild.primary_category_id", "id")
-                          .addSelect("COUNT(*)::int", "count")
+                          .addSelect(`CAST(COUNT(*) AS integer)`, "count")
                           .andWhere("guild.primary_category_id IS NOT NULL")
                           .groupBy("guild.primary_category_id")
                           .orderBy("count", "DESC")

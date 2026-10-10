@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { HTTPError } from "lambert-server/HTTPError";
 import { In, Raw } from "typeorm";
 // noinspection ES6PreferShortImport -- Causes a circular reference...
@@ -1185,11 +1186,10 @@ async function handleMessageMentionsAsync(message: Message, allowed?: AllowedMen
 
         if (users.size) {
             await fillInMissingIDs([...users], trace);
-            await ReadState.query(`UPDATE read_states SET mention_count = mention_count + 1 WHERE channel_id = $1 AND read_state_type = $2 AND user_id = ANY($3::bigint[])`, [
-                channel.id,
-                ReadStateType.CHANNEL,
-                [...users],
-            ]);
+            await ReadState.query(
+                `UPDATE read_states SET mention_count = mention_count + 1 WHERE channel_id = $1 AND read_state_type = $2 AND ${sqlArrayIncludes("user_id", "$3")}`,
+                [channel.id, ReadStateType.CHANNEL, [...users]],
+            );
             trace.calls.push("updateMentionedUserReadStates", {
                 micros: sw.getElapsedAndReset().totalMicroseconds,
             });

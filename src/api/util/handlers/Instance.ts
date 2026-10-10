@@ -1,3 +1,4 @@
+import { isSqlite, sqlForUpdate } from "@spacebar/database/Sql";
 import { getDatabase } from "@spacebar/database";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 
@@ -9,12 +10,12 @@ export function pruneTemporarySessions() {
     if (stopping) return pruning ?? Promise.resolve();
     if (pruning) return pruning;
     pruning = (async () => {
-        const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const cutoff = new Date(Date.now() - 60 * 60 * 1000);
         await getDatabase()!.query(
             `DELETE FROM "sessions" WHERE "session_id" IN (
-                SELECT "session_id" FROM "sessions" WHERE "last_seen" = '1970-01-01 00:00:00' AND "created_at" < $1::timestamp
-                ORDER BY "created_at", "session_id" LIMIT 500 FOR UPDATE SKIP LOCKED
-            ) AND "last_seen" = '1970-01-01 00:00:00' AND "created_at" < $1::timestamp`,
+                SELECT "session_id" FROM "sessions" WHERE "last_seen" = '${isSqlite() ? "1970-01-01 00:00:00.000" : "1970-01-01 00:00:00"}' AND "created_at" < $1
+                ORDER BY "created_at", "session_id" LIMIT 500 ${sqlForUpdate(true)}
+            ) AND "last_seen" = '${isSqlite() ? "1970-01-01 00:00:00.000" : "1970-01-01 00:00:00"}' AND "created_at" < $1`,
             [cutoff],
         );
     })().finally(() => {

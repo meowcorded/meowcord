@@ -15,17 +15,19 @@ function load(filename) {
             module,
             exports: module.exports,
             require: (name) =>
-                name === "@spacebar/util"
-                    ? {
-                          CollectibleItemType: {
-                              AVATAR_DECORATION: 0,
-                              PROFILE_EFFECT: 1,
-                              NAMEPLATE: 2,
-                              PROFILE_FRAME: 3,
-                          },
-                          Collectibles: { setCustomSource() {} },
-                      }
-                    : {},
+                name === "@spacebar/database/Sql"
+                    ? require("../../dist/database/Sql.js")
+                    : name === "@spacebar/util"
+                      ? {
+                            CollectibleItemType: {
+                                AVATAR_DECORATION: 0,
+                                PROFILE_EFFECT: 1,
+                                NAMEPLATE: 2,
+                                PROFILE_FRAME: 3,
+                            },
+                            Collectibles: { setCustomSource() {} },
+                        }
+                      : {},
         },
     );
     return module.exports;

@@ -1,3 +1,4 @@
+import { sqlGreatest } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { Channel, CloudAttachment, User, getDatabase } from "@spacebar/database";
@@ -73,9 +74,9 @@ router.post(
                 .getRepository(CloudAttachment)
                 .createQueryBuilder("attachment")
                 .select("COUNT(*)", "count")
-                .addSelect("COALESCE(SUM(GREATEST(COALESCE(attachment.user_file_size, 0), COALESCE(attachment.size, 0), 0)), 0)", "bytes")
+                .addSelect(`COALESCE(SUM(${sqlGreatest("COALESCE(attachment.user_file_size, 0)", "COALESCE(attachment.size, 0)", "0")}), 0)`, "bytes")
                 .addSelect("COALESCE(SUM(CASE WHEN attachment.size IS NULL THEN 1 ELSE 0 END), 0)", "pending_count")
-                .addSelect("COALESCE(SUM(CASE WHEN attachment.size IS NULL THEN GREATEST(COALESCE(attachment.user_file_size, 0), 0) ELSE 0 END), 0)", "pending_bytes")
+                .addSelect(`COALESCE(SUM(CASE WHEN attachment.size IS NULL THEN ${sqlGreatest("COALESCE(attachment.user_file_size, 0)", "0")} ELSE 0 END), 0)`, "pending_bytes")
                 .where("attachment.user_id = :id", { id: user.id })
                 .getRawOne<{
                     count: string;

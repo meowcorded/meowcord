@@ -1,3 +1,4 @@
+import { sqlArrayAggregate, sqlArrayIncludes, sqlZipArrays } from "@spacebar/database/Sql";
 import { In } from "typeorm";
 import { PreloadedUserSettings } from "discord-protos";
 import { Capabilities, CLOSECODES, genSessionId, getGuildCache, OPCODES, Payload, Send, setupListener, WebSocket } from "@spacebar/gateway";
@@ -276,7 +277,7 @@ export async function onIdentify(this: WebSocket, data: Payload) {
             });
             if (!members.length) return members;
             const memberRoles: { index: number; roles: string[] }[] = await Member.query(
-                `SELECT index, array_agg(role_id::text) AS roles FROM member_roles WHERE index = ANY($1) GROUP BY index`,
+                `SELECT "index", ${sqlArrayAggregate("CAST(role_id AS text)")} AS roles FROM member_roles WHERE ${sqlArrayIncludes('"index"', "$1")} GROUP BY "index"`,
                 [members.map((m) => m.index)],
             );
             const rolesByIndex = new Map(memberRoles.map((row) => [String(row.index), row.roles]));
@@ -388,10 +389,10 @@ export async function onIdentify(this: WebSocket, data: Payload) {
                 ? (Member.query(
                       `SELECT ${PublicMemberProjection.filter((x) => x !== "roles")
                           .map((x) => `m."${x}"`)
-                          .join(", ")}, COALESCE(array_agg(mr.role_id::text) FILTER (WHERE mr.role_id IS NOT NULL AND mr.role_id <> m.guild_id), '{}') AS roles
-                       FROM members m LEFT JOIN member_roles mr ON mr.index = m.index
-                       WHERE m.id = ANY($1) AND m.guild_id = ANY($2)
-                       GROUP BY m.index`,
+                          .join(", ")}, ${sqlArrayAggregate("CAST(mr.role_id AS text)", "mr.role_id IS NOT NULL AND mr.role_id <> m.guild_id")} AS roles
+                       FROM members m LEFT JOIN member_roles mr ON mr."index" = m."index"
+                       WHERE ${sqlArrayIncludes("m.id", "$1")} AND ${sqlArrayIncludes("m.guild_id", "$2")}
+                       GROUP BY m."index"`,
                       [onlineUserIds, memberGuildIds],
                   ) as Promise<GuildPresenceMember[]>)
                 : Promise.resolve([] as GuildPresenceMember[]),
@@ -716,7 +717,10 @@ export async function onIdentify(this: WebSocket, data: Payload) {
             ? arrayGroupBy(
                   (await getDatabase()!.query(
                       `SELECT d.guild_id, d.entity_type, d.entity_id, d.version FROM guild_entity_deletes d
-                       JOIN unnest($1::bigint[], $2::bigint[]) AS v(guild_id, version) ON d.guild_id = v.guild_id AND d.version > v.version`,
+                       JOIN ${sqlZipArrays([
+                           { parameter: "$1", type: "bigint", name: "guild_id" },
+                           { parameter: "$2", type: "bigint", name: "version" },
+                       ]).replace(/AS t/, "AS v")} ON d.guild_id = v.guild_id AND d.version > v.version`,
                       [[...clientGuildVersions.keys()], [...clientGuildVersions.values()]],
                   )) as (GuildEntityDelete & { guild_id: string })[],
                   (entry) => `${entry.guild_id}`,

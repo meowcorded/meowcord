@@ -33,7 +33,7 @@ export class Relationship extends BaseClass {
     @Column({ type: "int" })
     type: RelationshipType;
 
-    @Column()
+    @Column({ default: false })
     user_ignored: boolean;
 
     @Column({ type: "varchar", nullable: true })

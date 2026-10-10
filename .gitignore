@@ -3,6 +3,11 @@ db/
 dist/
 node_modules
 database.db
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db-shm
+*.db-wal
 tsconfig.tsbuildinfo
 files/
 assets/cache

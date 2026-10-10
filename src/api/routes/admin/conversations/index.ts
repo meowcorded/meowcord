@@ -1,3 +1,4 @@
+import { sqlLike } from "@spacebar/database/Sql";
 import { Router, Request, Response } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { getDatabase } from "@spacebar/database";
@@ -43,7 +44,7 @@ router.get(
             activity.channel_id, activity.last_message_at, activity.last_incoming_at
         FROM users person LEFT JOIN activity ON activity.user_id = person.id
         WHERE person.deleted = false AND person.bot = false AND person.system = false AND person.id <> $1
-            AND ($3 = '' OR person.id::text = $3 OR person.username ILIKE $4 OR person.global_name ILIKE $4)
+            AND ($3 = '' OR CAST(person.id AS text) = $3 OR ${sqlLike("person.username", "$4")} OR ${sqlLike("person.global_name", "$4")})
         ORDER BY (activity.last_incoming_at IS NOT NULL) DESC, activity.last_incoming_at DESC NULLS LAST,
             activity.last_message_at DESC NULLS LAST, LOWER(person.username), person.id
         LIMIT 51 OFFSET $5`,

@@ -1,3 +1,4 @@
+import { sqlForUpdate, sqlNow, sqlReturning } from "@spacebar/database/Sql";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 import { getDatabase } from "@spacebar/database";
 import { GUILD_VERSION_HORIZON } from "@spacebar/util";
@@ -17,14 +18,16 @@ async function drain() {
     }
     while (!stopping) {
         const processed = await db.transaction(async (manager) => {
-            const [next] = (await manager.query(`SELECT "channel_id" FROM "message_purges" ORDER BY "created_at", "channel_id" LIMIT 1 FOR UPDATE SKIP LOCKED`)) as {
+            const [next] = (await manager.query(`SELECT "channel_id" FROM "message_purges" ORDER BY "created_at", "channel_id" LIMIT 1 ${sqlForUpdate(true)}`)) as {
                 channel_id: string;
             }[];
             if (!next) return false;
-            const [, count] = (await manager.query(`DELETE FROM "messages" WHERE "id" IN (SELECT "id" FROM "messages" WHERE "channel_id" = $1 LIMIT ${BATCH})`, [
-                next.channel_id,
-            ])) as [unknown, number];
-            if (count >= BATCH) await manager.query(`UPDATE "message_purges" SET "created_at" = clock_timestamp() WHERE "channel_id" = $1`, [next.channel_id]);
+            const deleted = (await manager.query(
+                sqlReturning(`DELETE FROM "messages" WHERE "id" IN (SELECT "id" FROM "messages" WHERE "channel_id" = $1 LIMIT ${BATCH}) RETURNING id`),
+                [next.channel_id],
+            )) as { id: string }[];
+            const count = deleted.length;
+            if (count >= BATCH) await manager.query(`UPDATE "message_purges" SET "created_at" = ${sqlNow()} WHERE "channel_id" = $1`, [next.channel_id]);
             else await manager.query(`DELETE FROM "message_purges" WHERE "channel_id" = $1`, [next.channel_id]);
             return true;
         });

@@ -4,7 +4,7 @@ DMs and group DMs encrypt new messages and attachments by default. Ordinary pass
 
 ## Protocol
 
-Encryption identity, device, prekey, reset, backup and escrow mutations serialize on the account row in PostgreSQL. Each mutation reads the current encryption state after taking the lock and commits its related writes together. Reset also compares the password hash under the lock with the hash that admitted the request, so a password change invalidates an earlier reset attempt.
+Encryption identity, device, prekey, reset, backup and escrow mutations serialize on the account row in PostgreSQL and in a write transaction in SQLite. Each mutation reads the current encryption state after taking the lock and commits its related writes together. Reset also compares the password hash under the lock with the hash that admitted the request, so a password change invalidates an earlier reset attempt.
 
 The MVP uses a sealed box per recipient device. For every message the sending client:
 

@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { route } from "@spacebar/api/middlewares";
 import { PRIDE_BADGE_CATALOG, PRIDE_BADGES } from "@spacebar/api/util/utility/prideBadges";
 import { User } from "@spacebar/database";
@@ -32,7 +33,7 @@ router.patch(
             .update(User)
             .set({ pride_badges: selected })
             .where("id = :user_id", { user_id: req.user_id })
-            .andWhere("pride_badges IS DISTINCT FROM :selected::text[]", { selected })
+            .andWhere(isSqlite() ? "pride_badges IS DISTINCT FROM :selected" : "pride_badges IS DISTINCT FROM :selected::text[]", { selected })
             .execute();
         if (result.affected) await broadcastUserUpdate(req.user_id, selected);
         res.json({ flags: selected, catalog: PRIDE_BADGE_CATALOG });
