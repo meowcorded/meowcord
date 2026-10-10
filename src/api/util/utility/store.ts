@@ -1,3 +1,4 @@
+import { isSqlite, sqlArrayIncludes } from "@spacebar/database/Sql";
 import { HTTPError } from "lambert-server/HTTPError";
 import type { EntityManager } from "typeorm";
 import { StoreHiddenPack, StoreItem, StorePack } from "@spacebar/database";
@@ -425,19 +426,37 @@ export function applyStoreItemSettings(
 
 export async function clearStoreSelections(manager: EntityManager, skuIds: string[]): Promise<void> {
     if (!skuIds.length) return;
+    if (isSqlite()) {
+        for (const sku of skuIds) await manager.query('INSERT INTO "store_item_deletions" (sku_id) VALUES ($1) ON CONFLICT DO NOTHING', [sku]);
+        for (const table of ["users", "members"]) {
+            await manager.query(
+                `UPDATE "${table}" SET
+                avatar_decoration_data = CASE WHEN ${sqlArrayIncludes("avatar_decoration_data ->> 'sku_id'", "$1")} THEN NULL ELSE avatar_decoration_data END,
+                collectibles = CASE WHEN ${sqlArrayIncludes("collectibles -> 'nameplate' ->> 'sku_id'", "$1")} THEN json_set(collectibles, '$.nameplate', NULL) ELSE collectibles END,
+                profile_collectibles = CASE WHEN json_type(profile_collectibles) = 'array' THEN
+                    (SELECT json_group_array(json(value)) FROM json_each(profile_collectibles) WHERE (${sqlArrayIncludes("value ->> 'sku_id'", "$1")}) IS NOT TRUE)
+                    ELSE profile_collectibles END
+                WHERE ${sqlArrayIncludes("avatar_decoration_data ->> 'sku_id'", "$1")}
+                    OR ${sqlArrayIncludes("collectibles -> 'nameplate' ->> 'sku_id'", "$1")}
+                    OR EXISTS (SELECT 1 FROM json_each(CASE WHEN json_type(profile_collectibles) = 'array' THEN profile_collectibles ELSE '[]' END) entry WHERE ${sqlArrayIncludes("entry.value ->> 'sku_id'", "$1")})`,
+                [skuIds],
+            );
+        }
+        return;
+    }
     await manager.query(`INSERT INTO "store_item_deletions" (sku_id) SELECT unnest($1::text[]) ON CONFLICT (sku_id) DO NOTHING`, [skuIds]);
     const profileItems = "CASE WHEN jsonb_typeof(profile_collectibles) = 'array' THEN profile_collectibles ELSE '[]'::jsonb END";
     for (const table of ["users", "members"])
         await manager.query(
             `UPDATE "${table}" SET
-                avatar_decoration_data = CASE WHEN avatar_decoration_data ->> 'sku_id' = ANY($1::text[]) THEN NULL ELSE avatar_decoration_data END,
-                collectibles = CASE WHEN collectibles -> 'nameplate' ->> 'sku_id' = ANY($1::text[]) THEN jsonb_set(collectibles, '{nameplate}', 'null'::jsonb, false) ELSE collectibles END,
-                profile_collectibles = CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements(${profileItems}) AS entry WHERE entry ->> 'sku_id' = ANY($1::text[]))
+                avatar_decoration_data = CASE WHEN ${sqlArrayIncludes("avatar_decoration_data ->> 'sku_id'", "$1")} THEN NULL ELSE avatar_decoration_data END,
+                collectibles = CASE WHEN ${sqlArrayIncludes("collectibles -> 'nameplate' ->> 'sku_id'", "$1")} THEN jsonb_set(collectibles, '{nameplate}', 'null'::jsonb, false) ELSE collectibles END,
+                profile_collectibles = CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements(${profileItems}) AS entry WHERE ${sqlArrayIncludes("entry ->> 'sku_id'", "$1")})
                     THEN COALESCE((SELECT jsonb_agg(entry ORDER BY position) FROM jsonb_array_elements(${profileItems}) WITH ORDINALITY AS entries(entry, position)
-                        WHERE (entry ->> 'sku_id' = ANY($1::text[])) IS NOT TRUE), '[]'::jsonb) ELSE profile_collectibles END
-             WHERE avatar_decoration_data ->> 'sku_id' = ANY($1::text[])
-                OR collectibles -> 'nameplate' ->> 'sku_id' = ANY($1::text[])
-                OR EXISTS (SELECT 1 FROM jsonb_array_elements(${profileItems}) AS entry WHERE entry ->> 'sku_id' = ANY($1::text[]))`,
+                        WHERE (${sqlArrayIncludes("entry ->> 'sku_id'", "$1")}) IS NOT TRUE), '[]'::jsonb) ELSE profile_collectibles END
+             WHERE ${sqlArrayIncludes("avatar_decoration_data ->> 'sku_id'", "$1")}
+                OR ${sqlArrayIncludes("collectibles -> 'nameplate' ->> 'sku_id'", "$1")}
+                OR EXISTS (SELECT 1 FROM jsonb_array_elements(${profileItems}) AS entry WHERE ${sqlArrayIncludes("entry ->> 'sku_id'", "$1")})`,
             [skuIds],
         );
 }

@@ -1,3 +1,4 @@
+import { sqlArrayIncludes, sqlArrayRemove } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { Badge, User } from "@spacebar/database";
@@ -39,7 +40,9 @@ router.delete(
     async (req: Request, res: Response) => {
         const id = req.params.badge_id as string;
         await Badge.findOneOrFail({ where: { id }, select: { id: true } });
-        await User.query(`UPDATE "users" SET "badge_ids" = array_remove("badge_ids", $1::int8) WHERE $1::int8 = ANY("badge_ids")`, [id]);
+        await User.query(`UPDATE "users" SET "badge_ids" = ${sqlArrayRemove('"badge_ids"', "CAST($1 AS bigint)")} WHERE ${sqlArrayIncludes("CAST($1 AS bigint)", '"badge_ids"')}`, [
+            id,
+        ]);
         await Badge.delete({ id });
         res.sendStatus(204);
     },

@@ -27,7 +27,7 @@ export class StorageInventoryReferences {
             const stage = /^attachments\/(\d+)\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(path);
             if (stage) {
                 const staged = await this.database.query(
-                    `SELECT CASE WHEN u.id IS NOT NULL THEN 'user:' || u.id::text ELSE NULL END AS principal
+                    `SELECT CASE WHEN u.id IS NOT NULL THEN 'user:' || CAST(u.id AS text) ELSE NULL END AS principal
                     FROM cloud_attachments c LEFT JOIN users u ON u.id=c.user_id
                     WHERE c.upload_filename=$1 AND c.channel_id=$2 AND c.user_attachment_id=$3 AND c.user_filename=$4 LIMIT 2`,
                     [path.slice("attachments/".length), stage[1], stage[3], stage[4]],
@@ -38,9 +38,9 @@ export class StorageInventoryReferences {
             if (!match) return unknown();
             const posted = await this.database.query(
                 `SELECT DISTINCT CASE
-                WHEN m.webhook_id IS NOT NULL THEN CASE WHEN w.id IS NOT NULL THEN 'webhook:' || w.id::text ELSE NULL END
-                WHEN m.application_id IS NOT NULL THEN CASE WHEN app.id IS NOT NULL THEN 'application:' || app.id::text ELSE NULL END
-                WHEN u.id IS NOT NULL THEN 'user:' || u.id::text ELSE NULL END AS principal
+                WHEN m.webhook_id IS NOT NULL THEN CASE WHEN w.id IS NOT NULL THEN 'webhook:' || CAST(w.id AS text) ELSE NULL END
+                WHEN m.application_id IS NOT NULL THEN CASE WHEN app.id IS NOT NULL THEN 'application:' || CAST(app.id AS text) ELSE NULL END
+                WHEN u.id IS NOT NULL THEN 'user:' || CAST(u.id AS text) ELSE NULL END AS principal
                 FROM attachments a JOIN messages m ON m.id=a.message_id AND m.channel_id=$1
                 LEFT JOIN users u ON u.id=m.author_id LEFT JOIN webhooks w ON w.id=m.webhook_id LEFT JOIN applications app ON app.id=m.application_id
                 WHERE (a.channel_id=$1 OR a.channel_id IS NULL) AND (a.id=$2 OR a.message_id=$2) AND a.filename=$3 LIMIT 3`,
@@ -51,27 +51,26 @@ export class StorageInventoryReferences {
         const image = /^(avatars|banners)\/(\d+)\/([^/]+)$/.exec(path);
         if (image) {
             const column = image[1] === "avatars" ? "avatar" : "banner";
-            const rows = await this.database.query(`SELECT 'user:' || id::text AS principal FROM users WHERE id=$1 AND ${column}=$2`, [image[2], image[3]]);
+            const rows = await this.database.query(`SELECT 'user:' || CAST(id AS text) AS principal FROM users WHERE id=$1 AND ${column}=$2`, [image[2], image[3]]);
             if (image[1] === "avatars")
-                rows.push(...(await this.database.query("SELECT 'webhook:' || id::text AS principal FROM webhooks WHERE id=$1 AND avatar=$2", [image[2], image[3]])));
+                rows.push(...(await this.database.query(`SELECT 'webhook:' || CAST(id AS text) AS principal FROM webhooks WHERE id=$1 AND avatar=$2`, [image[2], image[3]])));
             return unique(rows, "managed");
         }
         const member = /^guilds\/(\d+)\/users\/(\d+)\/(avatars|banners)\/([^/]+)$/.exec(path);
         if (member) {
             const column = member[3] === "avatars" ? "avatar" : "banner";
             return unique(
-                await this.database.query(`SELECT 'user:' || m.id::text AS principal FROM members m JOIN users u ON u.id=m.id WHERE m.guild_id=$1 AND m.id=$2 AND m.${column}=$3`, [
-                    member[1],
-                    member[2],
-                    member[4],
-                ]),
+                await this.database.query(
+                    `SELECT 'user:' || CAST(m.id AS text) AS principal FROM members m JOIN users u ON u.id=m.id WHERE m.guild_id=$1 AND m.id=$2 AND m.${column}=$3`,
+                    [member[1], member[2], member[4]],
+                ),
                 "managed",
             );
         }
         const application = /^app-icons\/(\d+)\/([^/]+)$/.exec(path);
         if (application)
             return unique(
-                await this.database.query("SELECT 'application:' || id::text AS principal FROM applications WHERE id=$1 AND (icon=$2 OR cover_image=$2)", [
+                await this.database.query(`SELECT 'application:' || CAST(id AS text) AS principal FROM applications WHERE id=$1 AND (icon=$2 OR cover_image=$2)`, [
                     application[1],
                     application[2],
                 ]),
@@ -83,6 +82,8 @@ export class StorageInventoryReferences {
         const match = /^(user|webhook|application):(\d+)$/.exec(principal);
         if (!match) return false;
         const table = { user: "users", webhook: "webhooks", application: "applications" }[match[1] as "user" | "webhook" | "application"];
-        return (await this.database.query(`SELECT '${match[1]}:' || id::text AS principal FROM ${table} WHERE id=$1`, [match[2]])).some((row) => row.principal === principal);
+        return (await this.database.query(`SELECT '${match[1]}:' || CAST(id AS text) AS principal FROM ${table} WHERE id=$1`, [match[2]])).some(
+            (row) => row.principal === principal,
+        );
     }
 }

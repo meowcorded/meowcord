@@ -1,3 +1,4 @@
+import { lockTransaction } from "@spacebar/database/Sql";
 import { constants, promises as fs } from "node:fs";
 import path from "node:path";
 import { createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, hkdfSync, KeyObject, randomBytes, sign, verify } from "node:crypto";
@@ -144,7 +145,7 @@ const registerSender = async (sender: User): Promise<ManagedSender> => {
     const database = getDatabase();
     if (!database) throw keyUnavailable();
     await database.transaction(async (manager) => {
-        await manager.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`e2ee-system-sender:${sender.id}`]);
+        await lockTransaction(manager, `e2ee-system-sender:${sender.id}`);
         const identities = manager.getRepository(E2eeIdentity);
         const devices = manager.getRepository(E2eeDevice);
         const known = await identities.findOne({ where: { user_id: sender.id } });

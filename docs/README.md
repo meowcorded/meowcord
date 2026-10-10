@@ -2,6 +2,7 @@
 
 ## Self-hosting
 
+- [databases.md](self-hosting/databases.md): PostgreSQL and SQLite selection, migrations and backups.
 - [setup.md](self-hosting/setup.md): Docker and development setup, and the first operator account.
 - [deploy.md](self-hosting/deploy.md): production with Docker Compose, backups, updates, reverse proxies and phones.
 - [external-services.md](self-hosting/external-services.md): every outside service the instance can contact and how each is turned on.

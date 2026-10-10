@@ -30,7 +30,7 @@ export class SavedMessage extends BaseClass {
     @ManyToOne(() => Message, { onDelete: "CASCADE" })
     message: Message;
 
-    @Column({ type: "timestamp with time zone" })
+    @Column({ type: "timestamp with time zone", default: () => "now()" })
     saved_at: Date;
 
     @Column({ type: "timestamp with time zone", nullable: true })

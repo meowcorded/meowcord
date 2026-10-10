@@ -120,7 +120,8 @@ async function main() {
         } else await new Promise((resolve) => void secure.listen({ port: httpsPort }, () => resolve(undefined)));
         console.log(`[Server] ${green(`Serving HTTPS with HTTP/2 on port ${bold(httpsPort)}`)}`);
     }
-    await Promise.all([api.start(), cdn.start(), gateway.start(), webrtc.start()]);
+    await api.start();
+    await Promise.all([cdn.start(), gateway.start(), webrtc.start()]);
     TestClient(app);
 
     if (fs.existsSync("/proc/self/comm")) fs.writeFileSync("/proc/self/comm", `spacebar-bundle-${cluster.worker ? cluster.worker.id : port}`);

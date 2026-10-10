@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 // Copyright Spacebar & contributors 2026 (AGPLv3)
 import { createHash, randomUUID } from "node:crypto";
 import { HTTPError } from "lambert-server/HTTPError";
@@ -42,10 +43,13 @@ export class QuotaStorage implements Storage {
         const runner = database.createQueryRunner();
         await runner.connect();
         try {
-            await runner.query("SELECT pg_advisory_lock(hashtextextended($1,17014))", [this.namespace]);
-            return await callback(runner);
+            if (!isSqlite()) await runner.query("SELECT pg_advisory_lock(hashtextextended($1,17014))", [this.namespace]);
+            else await runner.startTransaction();
+            const result = await callback(runner);
+            if (isSqlite()) await runner.commitTransaction();
+            return result;
         } finally {
-            await runner.query("SELECT pg_advisory_unlock(hashtextextended($1,17014))", [this.namespace]).catch(() => {});
+            if (!isSqlite()) await runner.query("SELECT pg_advisory_unlock(hashtextextended($1,17014))", [this.namespace]).catch(() => {});
             await runner.release();
         }
     }
@@ -53,7 +57,12 @@ export class QuotaStorage implements Storage {
         this.initialized ??= this.exclusive(async (runner) => {
             await runner.startTransaction();
             try {
-                await runner.query("CREATE TEMP TABLE storage_runtime_inventory(path varchar(2048) PRIMARY KEY) ON COMMIT DROP");
+                await runner.query(
+                    isSqlite()
+                        ? "CREATE TEMP TABLE IF NOT EXISTS storage_runtime_inventory(path varchar(2048) PRIMARY KEY)"
+                        : "CREATE TEMP TABLE storage_runtime_inventory(path varchar(2048) PRIMARY KEY) ON COMMIT DROP",
+                );
+                if (isSqlite()) await runner.query("DELETE FROM storage_runtime_inventory");
                 const references = new StorageInventoryReferences({ query: (sql, parameters) => runner.query(sql, parameters) });
                 let count = 0;
                 for await (const object of this.backend.inventory()) {
@@ -130,7 +139,7 @@ export class QuotaStorage implements Storage {
                 objectLimit = limits[`${prefix}Objects`];
             if (!Number.isSafeInteger(byteLimit) || byteLimit < 1 || !Number.isSafeInteger(objectLimit) || objectLimit < 1) throw new HTTPError("Invalid storage quota", 503);
             const [usage] = await runner.query(
-                `SELECT COALESCE(SUM(bytes+reserved_bytes),0)::text AS bytes,COUNT(*)::text AS objects FROM storage_runtime_objects
+                `SELECT CAST(COALESCE(SUM(bytes+reserved_bytes),0) AS text) AS bytes,CAST(COUNT(*) AS text) AS objects FROM storage_runtime_objects
                 WHERE namespace=$1 ${prefix === "principal" ? "AND budget_principal=$2" : prefix === "cache" ? "AND category='cache'" : ""}`,
                 prefix === "principal" ? [this.namespace, budget] : [this.namespace],
             );

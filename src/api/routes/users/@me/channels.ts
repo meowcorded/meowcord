@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { HTTPError } from "lambert-server/HTTPError";
@@ -72,7 +73,7 @@ router.post(
                     [req.user_id, other, ChannelType.DM],
                 ),
                 Guild.query(
-                    `SELECT g.id FROM guilds g INNER JOIN members a ON a.guild_id = g.id AND a.id = $1 INNER JOIN members b ON b.guild_id = g.id AND b.id = $2 WHERE (g.incidents_data ->> 'dms_disabled_until')::timestamptz > now()`,
+                    `SELECT g.id FROM guilds g INNER JOIN members a ON a.guild_id = g.id AND a.id = $1 INNER JOIN members b ON b.guild_id = g.id AND b.id = $2 WHERE ${isSqlite() ? "datetime(g.incidents_data ->> 'dms_disabled_until') > datetime('now')" : "(g.incidents_data ->> 'dms_disabled_until')::timestamptz > now()"}`,
                     [req.user_id, other],
                 ),
             ]);

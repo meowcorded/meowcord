@@ -1,3 +1,4 @@
+import { sqlNow, sqlReturning } from "@spacebar/database/Sql";
 import { randomUUID } from "node:crypto";
 import type { ScheduledMessage } from "@spacebar/database";
 
@@ -8,18 +9,18 @@ type Query = (sql: string, parameters: unknown[]) => Promise<unknown>;
 export async function dispatchClaimedScheduledMessage(query: Query, id: string, send: (message: ScheduledMessage) => Promise<number | null>, onlyDue = false) {
     const token = randomUUID();
     const [scheduled] = (await query(
-        `WITH claimed AS (UPDATE "scheduled_messages" SET "claim_token" = $2, "claim_until" = now() + $3 * interval '1 millisecond'
-        WHERE "id" = $1 AND "state" = 0 AND ("claim_until" IS NULL OR "claim_until" <= now()) ${onlyDue ? `AND "send_at" <= now()` : ""} RETURNING *) SELECT * FROM claimed`,
-        [id, token, SCHEDULED_MESSAGE_LEASE_MS],
+        sqlReturning(`UPDATE "scheduled_messages" SET "claim_token" = $2, "claim_until" = $3
+        WHERE "id" = $1 AND "state" = 0 AND ("claim_until" IS NULL OR "claim_until" <= ${sqlNow()}) ${onlyDue ? `AND "send_at" <= ${sqlNow()}` : ""} RETURNING *`),
+        [id, token, new Date(Date.now() + SCHEDULED_MESSAGE_LEASE_MS)],
     )) as ScheduledMessage[];
     if (!scheduled) return false;
     let renewing: Promise<unknown> | undefined;
     const heartbeat = setInterval(() => {
         if (renewing) return;
-        renewing = query(`UPDATE "scheduled_messages" SET "claim_until" = now() + $3 * interval '1 millisecond' WHERE "id" = $1 AND "claim_token" = $2`, [
+        renewing = query(`UPDATE "scheduled_messages" SET "claim_until" = $3 WHERE "id" = $1 AND "claim_token" = $2`, [
             id,
             token,
-            SCHEDULED_MESSAGE_LEASE_MS,
+            new Date(Date.now() + SCHEDULED_MESSAGE_LEASE_MS),
         ])
             .catch((error) => console.error(`[ScheduledMessages] failed to renew delivery lease for ${id}`, error))
             .finally(() => {
@@ -30,8 +31,8 @@ export async function dispatchClaimedScheduledMessage(query: Query, id: string, 
         const failure = await send(scheduled);
         const completed = (await query(
             failure === null
-                ? `WITH completed AS (DELETE FROM "scheduled_messages" WHERE "id" = $1 AND "claim_token" = $2 RETURNING "id") SELECT "id" FROM completed`
-                : `WITH completed AS (UPDATE "scheduled_messages" SET "state" = $3, "claim_token" = NULL, "claim_until" = NULL WHERE "id" = $1 AND "claim_token" = $2 RETURNING "id") SELECT "id" FROM completed`,
+                ? sqlReturning(`DELETE FROM "scheduled_messages" WHERE "id" = $1 AND "claim_token" = $2 RETURNING "id"`)
+                : sqlReturning(`UPDATE "scheduled_messages" SET "state" = $3, "claim_token" = NULL, "claim_until" = NULL WHERE "id" = $1 AND "claim_token" = $2 RETURNING "id"`),
             failure === null ? [id, token] : [id, token, failure],
         )) as { id: string }[];
         return failure === null && completed.length > 0;

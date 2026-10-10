@@ -1,3 +1,4 @@
+import { sqlForUpdate } from "@spacebar/database/Sql";
 import { HTTPError } from "lambert-server/HTTPError";
 
 interface LedgerRow {
@@ -88,7 +89,7 @@ export class StorageQuotaLedger {
         const rows = [];
         for (const key of keys) {
             await transaction.query("INSERT INTO storage_quota_accounts(namespace,key) VALUES($1,$2) ON CONFLICT DO NOTHING", [namespace, key]);
-            const [row] = await transaction.query("SELECT * FROM storage_quota_accounts WHERE namespace=$1 AND key=$2 FOR UPDATE", [namespace, key]);
+            const [row] = await transaction.query(`SELECT * FROM storage_quota_accounts WHERE namespace=$1 AND key=$2 ${sqlForUpdate()}`, [namespace, key]);
             if (row.state !== "ready") throw new HTTPError("Storage inventory is required before mutations", 503);
             rows.push(row);
         }
@@ -125,14 +126,14 @@ export class StorageQuotaLedger {
         if (!request.path.split("/").every((part) => part && part !== "." && part !== "..") || /[\\\0]/.test(request.path)) throw new HTTPError("Invalid storage path", 400);
         return this.database.transaction(async (transaction) => {
             const accounts = await this.accounts(transaction, request.namespace, request.principal, request.category);
-            const [existing] = await transaction.query("SELECT * FROM storage_quota_operations WHERE namespace=$1 AND id=$2 FOR UPDATE", [request.namespace, request.id]);
+            const [existing] = await transaction.query(`SELECT * FROM storage_quota_operations WHERE namespace=$1 AND id=$2 ${sqlForUpdate()}`, [request.namespace, request.id]);
             if (existing) {
                 const op = operation(existing);
                 if (op.path !== request.path || op.principal !== request.principal || op.category !== request.category || op.upperBytes !== request.upperBytes)
                     throw new HTTPError("Storage operation identity conflict", 409);
                 return { operation: op, created: false };
             }
-            const [prior] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 FOR UPDATE", [request.namespace, request.path]);
+            const [prior] = await transaction.query(`SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 ${sqlForUpdate()}`, [request.namespace, request.path]);
             if (prior && (prior.principal !== request.principal || prior.category !== request.category || prior.state !== "live" || prior.pending_operation))
                 throw new HTTPError("Storage object ownership or operation conflict", 409);
             for (const account of accounts) {
@@ -175,9 +176,9 @@ export class StorageQuotaLedger {
             const [read] = await transaction.query("SELECT * FROM storage_quota_operations WHERE namespace=$1 AND id=$2", [namespace, id]);
             if (!read) throw new HTTPError("Unknown storage operation", 404);
             await this.accounts(transaction, namespace, read.principal, read.category);
-            const [row] = await transaction.query("SELECT * FROM storage_quota_operations WHERE namespace=$1 AND id=$2 FOR UPDATE", [namespace, id]);
+            const [row] = await transaction.query(`SELECT * FROM storage_quota_operations WHERE namespace=$1 AND id=$2 ${sqlForUpdate()}`, [namespace, id]);
             const op = operation(row);
-            const [object] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 FOR UPDATE", [namespace, op.path]);
+            const [object] = await transaction.query(`SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 ${sqlForUpdate()}`, [namespace, op.path]);
             await callback(transaction, op, object);
         });
     }
@@ -212,7 +213,7 @@ export class StorageQuotaLedger {
             const [read] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2", [namespace, path]);
             if (!read) return false;
             await this.accounts(transaction, namespace, read.principal, read.category);
-            const [object] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 FOR UPDATE", [namespace, path]);
+            const [object] = await transaction.query(`SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 ${sqlForUpdate()}`, [namespace, path]);
             if (!object || object.generation !== generation || object.pending_operation || !["live", "deleting"].includes(object.state))
                 throw new HTTPError("Storage operation conflict", 409);
             await transaction.query("UPDATE storage_quota_objects SET state='deleting' WHERE namespace=$1 AND path=$2", [namespace, path]);
@@ -224,7 +225,7 @@ export class StorageQuotaLedger {
             const [read] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2", [namespace, path]);
             if (!read) return;
             await this.accounts(transaction, namespace, read.principal, read.category);
-            const [object] = await transaction.query("SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 FOR UPDATE", [namespace, path]);
+            const [object] = await transaction.query(`SELECT * FROM storage_quota_objects WHERE namespace=$1 AND path=$2 ${sqlForUpdate()}`, [namespace, path]);
             if (!object || object.generation !== generation || object.state !== "deleting") throw new HTTPError("Storage operation conflict", 409);
             await this.counters(
                 transaction,

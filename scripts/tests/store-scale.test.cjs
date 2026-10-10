@@ -21,6 +21,7 @@ function storeHarness(options = {}) {
             exports: module.exports,
             Buffer,
             require(name) {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name === "@spacebar/database")
                     return {
                         StorePack: { find: async () => options.packs ?? [] },

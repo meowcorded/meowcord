@@ -1,3 +1,4 @@
+import { sqlNow } from "@spacebar/database/Sql";
 import { ProcessLifecycle } from "../../../util/util/ProcessLifecycle";
 import { Channel, ScheduledMessage, ScheduledMessagePayload, ScheduledMessageState, User, getDatabase } from "@spacebar/database";
 import { Config, DiscordApiErrors, FieldErrors, getPermission, getRights, Snowflake } from "@spacebar/util";
@@ -145,8 +146,8 @@ export function sendDueScheduledMessages() {
         const due = await ScheduledMessage.createQueryBuilder("scheduled")
             .select("scheduled.id")
             .where("scheduled.state = :state", { state: ScheduledMessageState.SCHEDULED })
-            .andWhere("scheduled.send_at <= now()")
-            .andWhere("(scheduled.claim_until IS NULL OR scheduled.claim_until <= now())")
+            .andWhere(`scheduled.send_at <= ${sqlNow()}`)
+            .andWhere(`(scheduled.claim_until IS NULL OR scheduled.claim_until <= ${sqlNow()})`)
             .orderBy("scheduled.send_at", "ASC")
             .addOrderBy("scheduled.id", "ASC")
             .take(100)

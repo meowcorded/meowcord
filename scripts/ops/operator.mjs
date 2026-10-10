@@ -29,7 +29,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         if (extra.length || !["grant", "revoke"].includes(action) || !/^[1-9][0-9]{0,19}$/.test(id || ""))
             throw new Error("Usage: bun scripts/ops/operator.mjs <grant|revoke> <account-id>");
         if (!process.env.DATABASE) throw new Error("DATABASE must identify the instance database; run this command from its configured working directory");
-        client = new Client({ connectionString: process.env.DATABASE, connectionTimeoutMillis: 10000, statement_timeout: 10000 });
+        if (process.env.DATABASE.startsWith("sqlite:")) {
+            const { Database } = await import("bun:sqlite");
+            const { sqlitePath } = await import("../../dist/database/Sql.js");
+            const database = new Database(sqlitePath(process.env.DATABASE), { readonly: false, create: false, safeIntegers: true });
+            database.exec("PRAGMA busy_timeout = 10000");
+            client = {
+                connect: async () => {},
+                query: async (sql, parameters = []) => {
+                    const statement = database.prepare(sql === "BEGIN" ? "BEGIN IMMEDIATE" : sql.replace(" FOR UPDATE", ""));
+                    return { rows: statement.columnNames.length ? statement.all(...parameters) : (statement.run(...parameters), []) };
+                },
+                end: async () => database.close(),
+            };
+        } else client = new Client({ connectionString: process.env.DATABASE, connectionTimeoutMillis: 10000, statement_timeout: 10000 });
         await client.connect();
         const changed = await setOperator(client, action, id);
         console.log(

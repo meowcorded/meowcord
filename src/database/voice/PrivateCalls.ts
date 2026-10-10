@@ -1,3 +1,4 @@
+import { isSqlite } from "@spacebar/database/Sql";
 import { IsNull } from "typeorm";
 import { MessageType } from "@spacebar/schemas";
 import { Config, emitEvent } from "@spacebar/util/util";
@@ -26,7 +27,10 @@ export class PrivateCalls {
         await Message.createQueryBuilder()
             .update()
             .set({
-                call: () => `jsonb_set("call", '{ended_timestamp}', to_jsonb(to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')))`,
+                call: () =>
+                    isSqlite()
+                        ? `json_set("call", '$.ended_timestamp', strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
+                        : `jsonb_set("call", '{ended_timestamp}', to_jsonb(to_char(now() at time zone 'utc', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')))`,
             })
             .where(`"type" = ${MessageType.CALL} AND "call" IS NOT NULL AND ("call"->>'ended_timestamp') IS NULL`)
             .execute();

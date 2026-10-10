@@ -13,6 +13,7 @@ const load = (file, imports = {}) => {
         module,
         exports: module.exports,
         require: (name) => {
+            if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
             if (!(name in imports)) throw Error(name);
             return imports[name];
         },

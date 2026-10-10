@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import { HTTPError } from "lambert-server/HTTPError";
@@ -161,16 +162,15 @@ router.post(
                     attachment_count: files.length,
                     recipient_count: 0,
                 });
-                const filter = body.audience === "staff" ? "AND (u.rights & $2::bigint) != 0" : body.audience === "selected" ? "AND u.id = ANY($2::bigint[])" : "";
+                const filter = body.audience === "staff" ? `AND (u.rights & CAST($2 AS bigint)) != 0` : body.audience === "selected" ? `AND ${sqlArrayIncludes("u.id", "$2")}` : "";
                 const args = body.audience === "everyone" ? [id] : [id, body.audience === "staff" ? STAFF_RIGHTS_MASK : selected];
-                const [row] = await manager.query(
-                    `WITH queued AS (INSERT INTO announcement_deliveries (announcement_id,user_id)
-                    SELECT $1,u.id FROM users u WHERE u.deleted=false AND u.bot=false AND u.system=false ${filter} RETURNING 1)
-                    SELECT count(*)::int AS count FROM queued`,
+                const queued = await manager.query(
+                    `INSERT INTO announcement_deliveries (announcement_id,user_id)
+                    SELECT $1,u.id FROM users u WHERE u.deleted=false AND u.bot=false AND u.system=false ${filter} RETURNING user_id`,
                     args,
                 );
-                entity.recipient_count = row.count;
-                await manager.getRepository(Announcement).update({ id }, { recipient_count: row.count });
+                entity.recipient_count = queued.length;
+                await manager.getRepository(Announcement).update({ id }, { recipient_count: queued.length });
                 return entity;
             });
         } catch (error) {

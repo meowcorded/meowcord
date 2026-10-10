@@ -40,6 +40,7 @@ function load(filename, imports) {
             },
             clearInterval: (timer) => cleared.push(timer),
             require: (name) => {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name.endsWith("/ProcessLifecycle")) return { ProcessLifecycle: lifecycle };
                 if (Object.hasOwn(imports, name)) return imports[name];
                 if (name.startsWith("node:")) return require(name);

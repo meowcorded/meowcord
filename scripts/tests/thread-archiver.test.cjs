@@ -26,6 +26,7 @@ function fixture(scan) {
             clearInterval: (timer) => cleared.push(timer),
             console: { error: (...args) => errors.push(args) },
             require: (name) => {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name === "../../../util/util/ProcessLifecycle") return { ProcessLifecycle: lifecycle };
                 if (name === "@spacebar/database") return { Channel: { createQueryBuilder: () => query } };
                 if (name === "@spacebar/schemas")

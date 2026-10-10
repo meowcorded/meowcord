@@ -45,6 +45,10 @@ PORT=3001 bun scripts/dev/parity-probe.mjs
 
 Only clear rate limits on the database you created for these tests. Encryption checks require `E2EE_TEST_DATABASE_NAME` to name that same isolated database. Use the browser and voice commands in [CONTRIBUTING.MD](../../CONTRIBUTING.MD) for changes affecting those features.
 
+## SQLite
+
+SQLite can replace PostgreSQL for a local instance. Set `DATABASE=sqlite:db/meowcord.sqlite` and run the bundled server with `THREADS=1`. Its schema is created by migrations on first startup. See [databases.md](databases.md) for connection paths, configuration and backups. Docker Compose and `dev:setup` continue to use PostgreSQL.
+
 ## Operator account
 
 Register an ordinary account and copy its numeric account ID from the client with Developer Mode enabled. The first signup receives no special rights. Only someone with local access to the instance database can provision an operator. Operator accounts can access `/admin` and change instance policy, so grant this right only to an account you control.

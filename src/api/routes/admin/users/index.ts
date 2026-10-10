@@ -1,3 +1,4 @@
+import { sqlLike } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { Brackets } from "typeorm";
 import { HTTPError } from "lambert-server/HTTPError";
@@ -120,9 +121,9 @@ router.get(
             query.where(
                 new Brackets((qb) =>
                     qb
-                        .where("user.username ILIKE :q", { q: searchPattern })
-                        .orWhere("user.global_name ILIKE :q", { q: searchPattern })
-                        .orWhere("user.email ILIKE :q", { q: searchPattern }),
+                        .where(`${sqlLike("user.username", ":q")}`, { q: searchPattern })
+                        .orWhere(`${sqlLike("user.global_name", ":q")}`, { q: searchPattern })
+                        .orWhere(`${sqlLike("user.email", ":q")}`, { q: searchPattern }),
                 ),
             );
 

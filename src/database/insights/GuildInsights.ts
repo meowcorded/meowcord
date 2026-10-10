@@ -1,3 +1,4 @@
+import { isSqlite, sqlDayString, sqlGreatest, sqlZipArrays } from "@spacebar/database/Sql";
 import type { EntityManager } from "typeorm";
 import { HTTPError } from "lambert-server/HTTPError";
 import { Snowflake } from "@spacebar/util/util/Snowflake";
@@ -57,7 +58,12 @@ export class GuildInsights {
         const today = dayOf(Date.now());
         await db().query(
             `INSERT INTO "guild_insights_daily" ("guild_id", "day", "metric", "key", "value")
-            SELECT $1::bigint, "day", "metric", "key", "value" FROM unnest($2::date[], $3::varchar[], $4::varchar[], $5::bigint[]) AS t("day", "metric", "key", "value")
+            SELECT CAST($1 AS bigint), "day", "metric", "key", "value" FROM ${sqlZipArrays([
+                { parameter: "$2", type: "date", name: "day" },
+                { parameter: "$3", type: "varchar", name: "metric" },
+                { parameter: "$4", type: "varchar", name: "key" },
+                { parameter: "$5", type: "bigint", name: "value" },
+            ])} WHERE true
             ON CONFLICT ("guild_id", "day", "metric", "key") DO UPDATE SET "value" = "guild_insights_daily"."value" + EXCLUDED."value"`,
             [guildId, rows.map(([, , , day]) => day ?? today), rows.map(([metric]) => metric), rows.map(([, key]) => key), rows.map(([, , amount]) => Math.round(amount))],
         );
@@ -89,7 +95,7 @@ export class GuildInsights {
     static async markActivity(channelId: string, userId: string, kinds: number) {
         await db().query(
             `INSERT INTO "guild_insights_activity" ("guild_id", "day", "channel_id", "user_id", "kinds")
-            SELECT "guild_id", $3::date, "id", $2::bigint, $4 FROM "channels" WHERE "id" = $1::bigint AND "guild_id" IS NOT NULL
+            SELECT "guild_id", DATE($3), "id", CAST($2 AS bigint), $4 FROM "channels" WHERE "id" = CAST($1 AS bigint) AND "guild_id" IS NOT NULL
             ON CONFLICT ("guild_id", "day", "channel_id", "user_id") DO UPDATE SET "kinds" = "guild_insights_activity"."kinds" | EXCLUDED."kinds"`,
             [channelId, userId, dayOf(Date.now()), kinds],
         );
@@ -134,7 +140,7 @@ export class GuildInsights {
         const of = (id: string) => result.get(id) ?? result.set(id, {}).get(id)!;
         const startMs = dayStart(startDay);
         const endMs = dayStart(endDay);
-        const guildFilter = (column: string, index: number) => (guildId ? `AND ${column} = $${index}::bigint` : "");
+        const guildFilter = (column: string, index: number) => (guildId ? `AND ${column} = CAST($${index} AS bigint)` : "");
         const params = [startDay, endDay, snowflakeAt(startMs), snowflakeAt(endMs), ...(guildId ? [guildId] : [])];
 
         const usage: {
@@ -147,17 +153,25 @@ export class GuildInsights {
         }[] = await db().query(
             `WITH "used" AS (
                 SELECT "guild_id", "channel_id", "user_id", ("kinds" & ${VOICE}) <> 0 AS "voice", false AS "sent"
-                FROM "guild_insights_activity" WHERE "day" >= $1::date AND "day" < $2::date ${guildFilter(`"guild_id"`, 5)}
+                FROM "guild_insights_activity" WHERE "day" >= DATE($1) AND "day" < DATE($2) ${guildFilter(`"guild_id"`, 5)}
                 UNION ALL
                 SELECT "guild_id", "channel_id", "author_id", false, true
-                FROM "messages" WHERE "id" >= $3::bigint AND "id" < $4::bigint AND "guild_id" IS NOT NULL ${guildFilter(`"guild_id"`, 5)}
+                FROM "messages" WHERE "id" >= CAST($3 AS bigint) AND "id" < CAST($4 AS bigint) AND "guild_id" IS NOT NULL ${guildFilter(`"guild_id"`, 5)}
             )
-            SELECT "guild_id"::text AS "guild_id", "channel_id"::text AS "channel_id",
+            SELECT CAST("guild_id" AS text) AS "guild_id", CAST("channel_id" AS text) AS "channel_id",
                 count(*) FILTER (WHERE "sent") AS "messages",
                 count(DISTINCT "user_id") AS "visitors",
                 count(DISTINCT "user_id") FILTER (WHERE "sent" OR "voice") AS "communicators",
                 count(DISTINCT "user_id") FILTER (WHERE "voice") AS "voice_users"
-            FROM "used" GROUP BY GROUPING SETS (("guild_id", "channel_id"), ("guild_id"))`,
+            FROM "used" ${
+                isSqlite()
+                    ? `GROUP BY "guild_id", "channel_id"
+                UNION ALL SELECT CAST("guild_id" AS text), NULL,
+                count(*) FILTER (WHERE "sent"), count(DISTINCT "user_id"),
+                count(DISTINCT "user_id") FILTER (WHERE "sent" OR "voice"), count(DISTINCT "user_id") FILTER (WHERE "voice")
+                FROM "used" GROUP BY "guild_id"`
+                    : `GROUP BY GROUPING SETS (("guild_id", "channel_id"), ("guild_id"))`
+            }`,
             params,
         );
         for (const row of usage) {
@@ -172,10 +186,10 @@ export class GuildInsights {
         const startDate = new Date(startMs);
         const endDate = new Date(endMs);
         const fresh: { guild_id: string; count: string }[] = await db().query(
-            `SELECT "used"."guild_id"::text AS "guild_id", count(DISTINCT "used"."user_id") AS "count" FROM (
-                SELECT "guild_id", "user_id" FROM "guild_insights_activity" WHERE "day" >= $1::date AND "day" < $2::date AND ("kinds" & ${VOICE}) <> 0 ${guildFilter(`"guild_id"`, 7)}
+            `SELECT CAST("used"."guild_id" AS text) AS "guild_id", count(DISTINCT "used"."user_id") AS "count" FROM (
+                SELECT "guild_id", "user_id" FROM "guild_insights_activity" WHERE "day" >= DATE($1) AND "day" < DATE($2) AND ("kinds" & ${VOICE}) <> 0 ${guildFilter(`"guild_id"`, 7)}
                 UNION ALL
-                SELECT "guild_id", "author_id" FROM "messages" WHERE "id" >= $3::bigint AND "id" < $4::bigint AND "guild_id" IS NOT NULL ${guildFilter(`"guild_id"`, 7)}
+                SELECT "guild_id", "author_id" FROM "messages" WHERE "id" >= CAST($3 AS bigint) AND "id" < CAST($4 AS bigint) AND "guild_id" IS NOT NULL ${guildFilter(`"guild_id"`, 7)}
             ) AS "used"
             JOIN "members" ON "members"."guild_id" = "used"."guild_id" AND "members"."id" = "used"."user_id"
             WHERE "members"."joined_at" >= $5 AND "members"."joined_at" < $6
@@ -192,7 +206,12 @@ export class GuildInsights {
             by_code: number;
             count: string;
         }[] = await db().query(
-            `SELECT "guild_id"::text AS "guild_id", "join_source_type" AS "source", "source_invite_code" AS "code",
+            isSqlite()
+                ? `WITH joined AS (SELECT * FROM members WHERE joined_at >= $1 AND joined_at < $2 ${guildFilter("guild_id", 3)})
+                SELECT CAST(guild_id AS text) AS guild_id, NULL AS source, NULL AS code, 1 AS by_source, 1 AS by_code, count(*) AS count FROM joined GROUP BY guild_id
+                UNION ALL SELECT CAST(guild_id AS text), join_source_type, NULL, 0, 1, count(*) FROM joined GROUP BY guild_id, join_source_type
+                UNION ALL SELECT CAST(guild_id AS text), NULL, source_invite_code, 1, 0, count(*) FROM joined GROUP BY guild_id, source_invite_code`
+                : `SELECT CAST("guild_id" AS text) AS "guild_id", "join_source_type" AS "source", "source_invite_code" AS "code",
                 GROUPING("join_source_type") AS "by_source", GROUPING("source_invite_code") AS "by_code", count(*) AS "count"
             FROM "members" WHERE "joined_at" >= $1 AND "joined_at" < $2 ${guildFilter(`"guild_id"`, 3)}
             GROUP BY GROUPING SETS (("guild_id"), ("guild_id", "join_source_type"), ("guild_id", "source_invite_code"))`,
@@ -210,10 +229,10 @@ export class GuildInsights {
 
     static async membership(day: string, guildId?: string) {
         const rows: { guild_id: string; count: string }[] = await db().query(
-            `SELECT "guilds"."id"::text AS "guild_id",
+            `SELECT CAST("guilds"."id" AS text) AS "guild_id",
                 (SELECT count(*) FROM "members" WHERE "members"."guild_id" = "guilds"."id" AND "members"."joined_at" < $1)
-                + (SELECT coalesce(sum("value"), 0) FROM "guild_insights_daily" AS "daily" WHERE "daily"."guild_id" = "guilds"."id" AND "daily"."metric" = 'leaves' AND "daily"."day" > $2::date) AS "count"
-            FROM "guilds" ${guildId ? `WHERE "guilds"."id" = $3::bigint` : ""}`,
+                + (SELECT coalesce(sum("value"), 0) FROM "guild_insights_daily" AS "daily" WHERE "daily"."guild_id" = "guilds"."id" AND "daily"."metric" = 'leaves' AND "daily"."day" > DATE($2)) AS "count"
+            FROM "guilds" ${guildId ? `WHERE "guilds"."id" = CAST($3 AS bigint)` : ""}`,
             [new Date(dayStart(day) + DAY), day, ...(guildId ? [guildId] : [])],
         );
         return new Map(rows.map((row) => [row.guild_id, Number(row.count)]));
@@ -221,7 +240,7 @@ export class GuildInsights {
 
     static async retained(cohortDay: string, guildId?: string) {
         const rows: { guild_id: string; count: string }[] = await db().query(
-            `SELECT "guild_id"::text AS "guild_id", count(*) AS "count" FROM "members" WHERE "joined_at" >= $1 AND "joined_at" < $2 ${guildId ? `AND "guild_id" = $3::bigint` : ""} GROUP BY "guild_id"`,
+            `SELECT CAST("guild_id" AS text) AS "guild_id", count(*) AS "count" FROM "members" WHERE "joined_at" >= $1 AND "joined_at" < $2 ${guildId ? `AND "guild_id" = CAST($3 AS bigint)` : ""} GROUP BY "guild_id"`,
             [new Date(dayStart(cohortDay)).toISOString(), new Date(dayStart(cohortDay) + DAY).toISOString(), ...(guildId ? [guildId] : [])],
         );
         return new Map(rows.map((row) => [row.guild_id, Number(row.count)]));
@@ -229,10 +248,10 @@ export class GuildInsights {
 
     static async retainedByDay(guildId: string, startDay: string, endDay: string) {
         const rows: { day: string; count: string }[] = await db().query(
-            `SELECT to_char("cohort"."day", 'YYYY-MM-DD') AS "day", "cohort"."count" FROM (
-                SELECT "joined_at"::date AS "day", count(*) AS "count" FROM "members"
-                WHERE "guild_id" = $1::bigint AND "joined_at" >= $2 AND "joined_at" < $3
-                GROUP BY "joined_at"::date
+            `SELECT ${sqlDayString('"cohort"."day"')} AS "day", "cohort"."count" FROM (
+                SELECT DATE("joined_at") AS "day", count(*) AS "count" FROM "members"
+                WHERE "guild_id" = CAST($1 AS bigint) AND "joined_at" >= $2 AND "joined_at" < $3
+                GROUP BY DATE("joined_at")
             ) AS "cohort"`,
             [guildId, new Date(dayStart(startDay)).toISOString(), new Date(dayStart(endDay)).toISOString()],
         );
@@ -244,15 +263,21 @@ export class GuildInsights {
             const batch = rows.slice(i, i + 5000);
             await executor.query(
                 `INSERT INTO "guild_insights_daily" ("guild_id", "day", "metric", "key", "value")
-                SELECT * FROM unnest($1::bigint[], $2::date[], $3::varchar[], $4::varchar[], $5::bigint[])
-                ON CONFLICT ("guild_id", "day", "metric", "key") DO UPDATE SET "value" = CASE WHEN EXCLUDED."metric" IN (${MAX_MERGED_METRICS.map((m) => `'${m}'`).join(", ")}) THEN GREATEST("guild_insights_daily"."value", EXCLUDED."value") ELSE EXCLUDED."value" END`,
+                SELECT * FROM ${sqlZipArrays([
+                    { parameter: "$1", type: "bigint", name: "guild_id" },
+                    { parameter: "$2", type: "date", name: "day" },
+                    { parameter: "$3", type: "varchar", name: "metric" },
+                    { parameter: "$4", type: "varchar", name: "key" },
+                    { parameter: "$5", type: "bigint", name: "value" },
+                ])} WHERE true
+                ON CONFLICT ("guild_id", "day", "metric", "key") DO UPDATE SET "value" = CASE WHEN EXCLUDED."metric" IN (${MAX_MERGED_METRICS.map((m) => `'${m}'`).join(", ")}) THEN ${sqlGreatest('"guild_insights_daily"."value"', 'EXCLUDED."value"')} ELSE EXCLUDED."value" END`,
                 [batch.map((r) => r.guild_id), batch.map((r) => r.day), batch.map((r) => r.metric), batch.map((r) => r.key), batch.map((r) => r.value)],
             );
         }
     }
 
     static async rollup(day: string) {
-        const complete = await db().query(`SELECT 1 FROM "guild_insights_rollups" WHERE "day" = $1::date`, [day]);
+        const complete = await db().query(`SELECT 1 FROM "guild_insights_rollups" WHERE "day" = DATE($1)`, [day]);
         if (complete.length) return false;
         const rows: Row[] = [];
         const computed = await GuildInsights.computeRange(day, addDays(day, 1));
@@ -264,14 +289,14 @@ export class GuildInsights {
         const cohort = addDays(day, -7);
         const retained = await GuildInsights.retained(cohort);
         const cohortJoins: { guild_id: string }[] = await db().query(
-            `SELECT "guild_id"::text AS "guild_id" FROM "guild_insights_daily" WHERE "day" = $1::date AND "metric" = 'joins' AND "key" = '' AND "value" > 0`,
+            `SELECT CAST("guild_id" AS text) AS "guild_id" FROM "guild_insights_daily" WHERE "day" = DATE($1) AND "metric" = 'joins' AND "key" = '' AND "value" > 0`,
             [cohort],
         );
         for (const { guild_id } of cohortJoins) if (!retained.has(guild_id)) retained.set(guild_id, 0);
         for (const [guild_id, value] of retained) rows.push({ guild_id, day: cohort, metric: "retained", key: "", value });
 
         return db().transaction(async (manager) => {
-            const claimed = await manager.query(`INSERT INTO "guild_insights_rollups" ("day") VALUES ($1::date) ON CONFLICT DO NOTHING RETURNING "day"`, [day]);
+            const claimed = await manager.query(`INSERT INTO "guild_insights_rollups" ("day") VALUES (DATE($1)) ON CONFLICT DO NOTHING RETURNING "day"`, [day]);
             if (!claimed.length) return false;
             await GuildInsights.write(rows, manager);
             return true;
@@ -290,14 +315,14 @@ export class GuildInsights {
     private static async rollupPendingOnce() {
         const today = dayOf(Date.now());
         const first = addDays(today, -MAX_RANGE_DAYS);
-        const done: { day: string }[] = await db().query(`SELECT to_char("day", 'YYYY-MM-DD') AS "day" FROM "guild_insights_rollups" WHERE "day" >= $1::date`, [first]);
+        const done: { day: string }[] = await db().query(`SELECT ${sqlDayString('"day"')} AS "day" FROM "guild_insights_rollups" WHERE "day" >= DATE($1)`, [first]);
         const doneDays = new Set(done.map((row) => row.day));
         let rolled = 0;
         for (let day = first; day < today; day = addDays(day, 1)) {
             if (stopping) break;
             if (!doneDays.has(day) && (await GuildInsights.rollup(day))) rolled++;
         }
-        await db().query(`DELETE FROM "guild_insights_activity" WHERE "day" < $1::date`, [addDays(today, -ACTIVITY_KEEP_DAYS)]);
+        await db().query(`DELETE FROM "guild_insights_activity" WHERE "day" < DATE($1)`, [addDays(today, -ACTIVITY_KEEP_DAYS)]);
         if (rolled) console.log(`[Insights] rolled up ${rolled} day${rolled === 1 ? "" : "s"}`);
         return rolled;
     }
@@ -321,21 +346,21 @@ export class GuildInsights {
         for (let day = startDay; day <= endDay; day = addDays(day, 1)) days.set(day, {});
 
         const stored: Row[] = await db().query(
-            `SELECT to_char("day", 'YYYY-MM-DD') AS "day", "metric", "key", "value"::float8 AS "value" FROM "guild_insights_daily" WHERE "guild_id" = $1::bigint AND "day" >= $2::date AND "day" <= $3::date`,
+            `SELECT ${sqlDayString('"day"')} AS "day", "metric", "key", CAST("value" AS double precision) AS "value" FROM "guild_insights_daily" WHERE "guild_id" = CAST($1 AS bigint) AND "day" >= DATE($2) AND "day" <= DATE($3)`,
             [guildId, startDay, endDay],
         );
         for (const row of stored) put(days.get(row.day)!, row.metric, row.key, Number(row.value), "set");
 
-        const rolled: { day: string }[] = await db().query(
-            `SELECT to_char("day", 'YYYY-MM-DD') AS "day" FROM "guild_insights_rollups" WHERE "day" >= $1::date AND "day" <= $2::date`,
-            [startDay, endDay],
-        );
+        const rolled: { day: string }[] = await db().query(`SELECT ${sqlDayString('"day"')} AS "day" FROM "guild_insights_rollups" WHERE "day" >= DATE($1) AND "day" <= DATE($2)`, [
+            startDay,
+            endDay,
+        ]);
         const rolledDays = new Set(rolled.map((row) => row.day));
         const now = Date.now();
         const today = dayOf(now);
 
         const openSessions: { channel_id: string; connected_at: string }[] = await db().query(
-            `SELECT "channel_id"::text AS "channel_id", "connected_at"::text AS "connected_at" FROM "voice_states" WHERE "guild_id" = $1::bigint AND "channel_id" IS NOT NULL AND "connected_at" IS NOT NULL`,
+            `SELECT CAST("channel_id" AS text) AS "channel_id", CAST("connected_at" AS text) AS "connected_at" FROM "voice_states" WHERE "guild_id" = CAST($1 AS bigint) AND "channel_id" IS NOT NULL AND "connected_at" IS NOT NULL`,
             [guildId],
         );
 

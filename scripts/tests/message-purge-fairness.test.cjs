@@ -20,6 +20,7 @@ function loadPurger(database, lifecycle = { eventEmitter: new (require("node:eve
         ...timers,
         console: { error: (...args) => errors.push(args) },
         require(name) {
+            if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
             if (name === "../../../util/util/ProcessLifecycle") return { ProcessLifecycle: lifecycle };
             if (name === "@spacebar/database") return { getDatabase: () => database };
             if (name === "@spacebar/util") return { GUILD_VERSION_HORIZON: 86_400_000 };
@@ -62,7 +63,7 @@ test("message purges rotate bounded batches and preserve work across simultaneou
                     fn({
                         query: async (sql, parameters) => {
                             const result = await manager.query(sql, parameters);
-                            if (sql.startsWith('DELETE FROM "messages"')) batches.push({ channel: parameters[0], count: result[1] });
+                            if (sql.includes('DELETE FROM "messages"')) batches.push({ channel: parameters[0], count: result.length });
                             return result;
                         },
                     }),
@@ -102,7 +103,7 @@ test("message purges rotate bounded batches and preserve work across simultaneou
                     ds.transaction((manager) =>
                         fn({
                             query: async (sql, parameters) => {
-                                if (!held && sql.startsWith('DELETE FROM "messages"') && parameters[0] === "10") {
+                                if (!held && sql.includes('DELETE FROM "messages"') && parameters[0] === "10") {
                                     held = true;
                                     ready();
                                     await gate;

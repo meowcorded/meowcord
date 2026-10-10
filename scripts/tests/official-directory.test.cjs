@@ -31,7 +31,7 @@ function harness(database) {
         ts.transpileModule(fs.readFileSync("src/api/routes/admin/conversations/index.ts", "utf8"), {
             compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
         }).outputText,
-        { module, exports: module.exports, require: (name) => imports[name] },
+        { module, exports: module.exports, require: (name) => (name === "@spacebar/database/Sql" ? require("../../dist/database/Sql.js") : imports[name]) },
     );
     const response = {
         set() {

@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { In, Not } from "typeorm";
 import { arrayGroupBy } from "@spacebar/extensions";
 import { Channel, Emoji, getDatabase, Role, Sticker } from "@spacebar/database";
@@ -82,10 +83,10 @@ export async function getGuildCache(guildIds: string[]): Promise<Map<string, Gui
     const started = ++generation;
     const [cacheable, live] = await Promise.all([
         subscribe(),
-        getDatabase()!.query(`SELECT id, guild_id, last_message_id, last_pin_timestamp, e2ee_enabled_at, version FROM channels WHERE guild_id = ANY($1) AND NOT (type = ANY($2))`, [
-            guildIds,
-            threadTypes,
-        ]) as Promise<
+        getDatabase()!.query(
+            `SELECT id, guild_id, last_message_id, last_pin_timestamp, e2ee_enabled_at, version FROM channels WHERE ${sqlArrayIncludes("guild_id", "$1")} AND NOT (${sqlArrayIncludes("type", "$2")})`,
+            [guildIds, threadTypes],
+        ) as Promise<
             {
                 id: string;
                 guild_id: string;

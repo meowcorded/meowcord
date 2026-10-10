@@ -1,3 +1,4 @@
+import { sqlArrayIncludes } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { HTTPError } from "lambert-server/HTTPError";
 import { route } from "@spacebar/api/middlewares";
@@ -37,7 +38,7 @@ router.get(
     async (req: Request, res: Response) => {
         const badges = await Badge.find({ order: { description: "ASC" } });
         const counts: { id: string; holders: string }[] = await User.query(
-            `SELECT b.id, COUNT(u.id) AS holders FROM badges b LEFT JOIN users u ON b.id::int8 = ANY(u.badge_ids) GROUP BY b.id`,
+            `SELECT b.id, COUNT(u.id) AS holders FROM badges b LEFT JOIN users u ON ${sqlArrayIncludes("CAST(b.id AS bigint)", "u.badge_ids")} GROUP BY b.id`,
         );
         res.json(badges.map((b) => serializeBadge(b, Number(counts.find((c) => c.id === b.id)?.holders ?? 0))));
     },

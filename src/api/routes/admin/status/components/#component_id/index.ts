@@ -1,3 +1,4 @@
+import { sqlArrayRemove } from "@spacebar/database/Sql";
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
 import { StatusComponent, StatusIncident } from "@spacebar/database";
@@ -40,7 +41,7 @@ router.delete(
     async (req: Request, res: Response) => {
         const id = req.params.component_id as string;
         await StatusComponent.findOneOrFail({ where: { id }, select: { id: true } });
-        await StatusIncident.query(`UPDATE "status_incidents" SET "component_ids" = array_remove("component_ids", $1::int8)`, [id]);
+        await StatusIncident.query(`UPDATE "status_incidents" SET "component_ids" = ${sqlArrayRemove('"component_ids"', "CAST($1 AS bigint)")}`, [id]);
         await StatusComponent.delete({ id });
         res.sendStatus(204);
     },

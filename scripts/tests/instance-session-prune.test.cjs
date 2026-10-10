@@ -43,6 +43,7 @@ function fixture(query) {
             },
             clearInterval: (timer) => cleared.push(timer),
             require: (name) => {
+                if (name === "@spacebar/database/Sql") return require("../../dist/database/Sql.js");
                 if (name === "@spacebar/database") return { getDatabase: () => ({ query }) };
                 if (name === "../../../util/util/ProcessLifecycle") return { ProcessLifecycle: lifecycle };
                 throw Error(name);
