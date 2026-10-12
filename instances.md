@@ -21,3 +21,4 @@ public meowcord instances. to add yours, open a pull request that adds a row.
 | Termcord | [termcord.linux-user.fyi](https://termcord.linux-user.fyi) | |
 | Hola Quetal | [dc.polo.beer](https://dc.polo.beer) | |
 | GTDcord | [chat.gtdmc.org](https://chat.gtdmc.org) | |
+| Happycord | [happycord.opuadm.com](https://happycord.opuadm.com) | [opuadm/happycord](https://github.com/opuadm/happycord) |
