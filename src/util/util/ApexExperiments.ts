@@ -19,6 +19,7 @@ const defaults: Record<string, { variant: number; config?: object }> = {
     "2026-03-friend-request-message": { variant: 1 },
     "2026-09-connected-thread-sidebar": { variant: 1 },
     "2026-03-arborium-highlight": { variant: 1 },
+    "2026-04_server_theme": { variant: 1, config: { enabled: true, inExperiment: true, gatesApex: false, rollbackEnabled: false } },
 };
 
 export const ROLLOUT_BUCKETS = 10000;
@@ -56,8 +57,8 @@ export function getUserExperiments(userId?: string): UserExperimentAssignment[] 
 }
 
 export function getGuildExperiments(guildId: string) {
-    const grants = Config.get().client.guildExperiments?.[guildId];
-    if (!grants) return undefined;
+    const client = Config.get().client;
+    const grants = { ...(client.experiments ?? {}), ...(client.guildExperiments?.[guildId] ?? {}) };
     const assignments = Object.entries(grants).flatMap(([name, variant]) => (Number.isInteger(variant) && variant > 0 ? [assign(name, variant, defaults[name]?.config)] : []));
     return assignments.length ? { evaluation_id: null, assignments } : undefined;
 }

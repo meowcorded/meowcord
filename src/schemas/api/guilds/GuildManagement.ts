@@ -19,6 +19,25 @@ export interface GuildProfileSettings {
     game_application_ids?: string[];
 }
 
+export interface GuildThemeCustomSettings {
+    colors: string[];
+    gradient_color_stops?: (number | { color: string; stop: number } | any)[];
+    gradient_angle?: number;
+    base_mix?: number;
+}
+
+export interface GuildTheme {
+    preset_id: number | null;
+    custom_user_theme_settings: GuildThemeCustomSettings | null;
+    enabled: boolean;
+}
+
+export interface GuildThemeModifySchema {
+    preset_id?: number | null;
+    custom_user_theme_settings?: GuildThemeCustomSettings | null;
+    enabled: boolean;
+}
+
 export interface GuildProfileModifySchema {
     name?: string;
     description?: string | null;

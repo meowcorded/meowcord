@@ -8,7 +8,7 @@ import { Guild, User } from "@spacebar/database";
 import { ASSETS_FOLDER, Config, inRollout, rolloutBucket } from "@spacebar/util";
 const router = Router({ mergeParams: true });
 let catalog: Promise<string[]> | undefined;
-const NAME = /["'`](20\d\d-\d\d-[a-z][a-z0-9]*(?:-[a-z0-9]+)*)["'`]/g;
+const NAME = /["'`](20\d\d[-_]\d\d[-_][a-zA-Z0-9_-]+)["'`]/g;
 const scanClient = async () => {
     const dir = path.join(ASSETS_FOLDER, "cache");
     const names = new Set<string>();

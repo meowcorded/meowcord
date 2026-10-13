@@ -4938,6 +4938,7 @@ async function renderExperiments(view) {
                 </div>
                 <div class="row" style="gap:8px">
                     <button class="btn" id="new-rollout" type="button">Roll out to a percentage</button>
+                    <button class="btn" id="new-manual-grant" type="button">+ Manual experiment</button>
                     <button class="btn primary" id="new-grant" type="button">Grant experiments</button>
                 </div>
             </div>
@@ -5038,6 +5039,10 @@ async function renderExperiments(view) {
       );
       if (done) refresh();
     });
+  $("#new-manual-grant")?.addEventListener("click", () => {
+    openGrant(catalog, refresh);
+    setTimeout(() => $("#manual-exp-name")?.focus(), 100);
+  });
   $("#new-grant").addEventListener("click", () => openGrant(catalog, refresh));
   $("#new-rollout").addEventListener("click", () =>
     openRollout(catalog, refresh, undefined, undefined, data.users_total),
@@ -5290,6 +5295,16 @@ function openGrant(catalog, refresh) {
           >Variant<span class="hint">1 is on for most. Some experiments have more.</span
           ><input name="variant" type="number" min="1" max="1000" value="1"
         /></label>
+        <div class="card stack" style="gap:8px; padding:12px; background:var(--card-subtle, rgba(255,255,255,0.02)); border:1px dashed var(--border, #3a3a3c); border-radius:8px">
+          <label style="font-weight:600; font-size:13px"
+            >Add experiment manually
+            <span class="hint">Type an experiment name (e.g. 2026-04_server_theme) to add and select it.</span>
+          </label>
+          <div class="row" style="gap:8px">
+            <input id="manual-exp-name" autocomplete="off" placeholder="e.g. 2026-04_server_theme" style="flex:1" />
+            <button class="btn primary" id="manual-exp-add" type="button">+ Add</button>
+          </div>
+        </div>
         <label
           >Experiments<input name="filter" autocomplete="off" placeholder="Filter, for example profile"
         /></label>
@@ -5331,6 +5346,24 @@ function openGrant(catalog, refresh) {
         label();
       });
   };
+  const addManual = () => {
+    const val = $("#manual-exp-name", body)?.value?.trim();
+    if (!val) return;
+    if (!/^[\w.-]{2,128}$/.test(val)) return toast("Invalid experiment name format", "error");
+    if (!catalog.includes(val)) catalog.unshift(val);
+    picked.add(val);
+    $("#manual-exp-name", body).value = "";
+    label();
+    list();
+    toast(`Added "${val}" to selected experiments`);
+  };
+  $("#manual-exp-add", body)?.addEventListener("click", addManual);
+  $("#manual-exp-name", body)?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addManual();
+    }
+  });
   form.filter.addEventListener("input", list);
   form.filter.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && /^[\w.-]{3,128}$/.test(form.filter.value)) {

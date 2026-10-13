@@ -14,6 +14,7 @@ import {
     GuildNsfwLevel,
     GuildPremiumTier,
     GuildProfileResponse,
+    GuildTheme,
     GuildVerificationLevel,
     GuildVisibilityLevel,
     GuildWelcomeScreen,
@@ -407,6 +408,9 @@ export class Guild extends BaseClass {
     @Column({ type: "jsonb", nullable: true })
     incidents_data?: GuildIncidentsData | null;
 
+    @Column({ type: "jsonb", nullable: true })
+    theme?: GuildTheme | null;
+
     premium_features?: {
         features: string[];
         additional_emoji_slots: number;
@@ -677,6 +681,7 @@ export class Guild extends BaseClass {
             vanity_url_code: this.vanity_url_code ?? null,
             incidents_data: this.incidents_data ?? null,
             safety_alerts_channel_id: this.safety_alerts_channel_id ?? null,
+            theme: this.theme ?? null,
             profile: this.profile?.tag
                 ? ({
                       tag: this.profile.tag,
