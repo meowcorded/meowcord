@@ -6,23 +6,19 @@ import { GuildTheme } from "@spacebar/schemas";
 
 const router = Router({ mergeParams: true });
 
-router.get(
-    "/",
-    route({}),
-    async (req: Request, res: Response) => {
-        const { guild_id } = req.params as { [key: string]: string };
-        const guild = await Guild.findOne({ where: { id: guild_id } });
-        if (!guild) throw DiscordApiErrors.UNKNOWN_GUILD;
+router.get("/", route({}), async (req: Request, res: Response) => {
+    const { guild_id } = req.params as { [key: string]: string };
+    const guild = await Guild.findOne({ where: { id: guild_id } });
+    if (!guild) throw DiscordApiErrors.UNKNOWN_GUILD;
 
-        const theme = guild.theme ?? null;
-        return res.json({
-            theme,
-            preset_id: theme?.preset_id ?? null,
-            custom_user_theme_settings: theme?.custom_user_theme_settings ?? null,
-            enabled: theme?.enabled ?? false,
-        });
-    },
-);
+    const theme = guild.theme ?? null;
+    return res.json({
+        theme,
+        preset_id: theme?.preset_id ?? null,
+        custom_user_theme_settings: theme?.custom_user_theme_settings ?? null,
+        enabled: theme?.enabled ?? false,
+    });
+});
 
 router.patch(
     "/",
