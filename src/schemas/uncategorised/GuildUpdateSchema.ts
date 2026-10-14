@@ -1,4 +1,4 @@
-import { GuildCreateSchema } from "@spacebar/schemas";
+import { GuildCreateSchema, GuildTheme } from "@spacebar/schemas";
 
 export interface GuildUpdateSchema extends Omit<GuildCreateSchema, "channels" | "system_channel_id" | "rules_channel_id"> {
     /**
@@ -22,4 +22,5 @@ export interface GuildUpdateSchema extends Omit<GuildCreateSchema, "channels" | 
     premium_progress_bar_enabled?: boolean;
     discovery_splash?: string | null;
     safety_alerts_channel_id?: string | null;
+    theme?: GuildTheme | null;
 }
