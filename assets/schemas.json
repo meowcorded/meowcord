@@ -1166,6 +1166,32 @@
         ],
         "$schema": "http://json-schema.org/draft-07/schema#"
     },
+    "GuildMfaSchema": {
+        "type": "object",
+        "properties": {
+            "level": {
+                "$ref": "#/definitions/GuildMFALevel"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "level"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "GuildMfaResponse": {
+        "type": "object",
+        "properties": {
+            "level": {
+                "$ref": "#/definitions/GuildMFALevel"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "level"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
     "InviteListResponse": {
         "type": "array",
         "items": {
@@ -2250,6 +2276,12 @@
             "activities": {
                 "type": "boolean"
             },
+            "members": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
             "channels": {
                 "type": "object",
                 "additionalProperties": {
@@ -2268,12 +2300,6 @@
             "typing": {
                 "const": true,
                 "type": "boolean"
-            },
-            "members": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
             },
             "member_updates": {
                 "type": "boolean"
@@ -4097,16 +4123,16 @@
             "icon": {
                 "type": "string"
             },
-            "channels": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/Channel"
-                }
-            },
             "members": {
                 "type": "array",
                 "items": {
                     "$ref": "#/definitions/Member"
+                }
+            },
+            "channels": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/definitions/Channel"
                 }
             },
             "system_channel_id": {
@@ -16006,6 +16032,14 @@
         "additionalProperties": false,
         "required": [
             "guild_ids"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "GuildMFALevel": {
+        "type": "number",
+        "enum": [
+            0,
+            1
         ],
         "$schema": "http://json-schema.org/draft-07/schema#"
     },
