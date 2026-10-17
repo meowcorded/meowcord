@@ -24,6 +24,7 @@ router.put("/", route({ responses: { 204: {}, 400: {}, 403: {}, 404: {} } }), as
     });
     if (!permissions.has("MANAGE_CHANNELS") && !(connected && permissions.has("SET_VOICE_CHANNEL_STATUS")))
         throw DiscordApiErrors.MISSING_PERMISSIONS.withParams("SET_VOICE_CHANNEL_STATUS");
+    if (!connected || !permissions.has("SET_VOICE_CHANNEL_STATUS")) permissions.assertMfa("MANAGE_CHANNELS");
 
     await Channel.update({ id: channel.id }, { status });
     await emitEvent({

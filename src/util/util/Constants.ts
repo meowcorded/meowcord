@@ -877,7 +877,7 @@ export const DiscordApiErrors = {
         return new ApiError("This server needs monetization enabled in order to perform this action", 50097);
     },
     get TWO_FACTOR_REQUIRED() {
-        return new ApiError("Two factor is required for this operation", 60003);
+        return new ApiError("Two factor is required for this operation", 60003, 403);
     },
     get INCOMING_FRIEND_REQUESTS_DISABLED() {
         return new ApiError("Incoming friend requests disabled.", 80000);

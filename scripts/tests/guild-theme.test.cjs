@@ -90,10 +90,15 @@ test("GET /guilds/:id/theme returns the theme for guild members", async () => {
 });
 
 test("the theme schema refuses bad colors, stops, angles and mixes", () => {
-    require("../../dist/database");
-    const { ajv } = require("../../dist/schemas");
+    const Ajv = require("ajv");
+    const fs = require("node:fs");
+    const schemas = JSON.parse(fs.readFileSync("assets/schemas.json", "utf8"));
+    const validate = new Ajv({ strict: false }).compile({
+        ...schemas.GuildThemeModifySchema,
+        definitions: schemas,
+    });
     const body = (custom) => ({ enabled: true, preset_id: 5, custom_user_theme_settings: { colors: ["#abcdef"], gradient_color_stops: [0, 100], ...custom } });
-    assert.equal(ajv.validate("GuildThemeModifySchema", body({})), true);
+    assert.equal(validate(body({})), true);
     for (const bad of [
         { colors: ["not-a-color"] },
         { colors: [1] },
@@ -104,8 +109,8 @@ test("the theme schema refuses bad colors, stops, angles and mixes", () => {
         { base_mix: -5 },
         { extra: true },
     ])
-        assert.equal(ajv.validate("GuildThemeModifySchema", body(bad)), false, JSON.stringify(bad));
-    assert.equal(ajv.validate("GuildThemeModifySchema", { enabled: true, preset_id: -1 }), false);
+        assert.equal(validate(body(bad)), false, JSON.stringify(bad));
+    assert.equal(validate({ enabled: true, preset_id: -1 }), false);
 });
 
 test("PATCH /guilds/:id/theme saves the theme and emits a guild update", async () => {

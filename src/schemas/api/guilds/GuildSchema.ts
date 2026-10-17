@@ -43,3 +43,16 @@ export enum GuildHubType {
     HIGH_SCHOOL = 1,
     COLLEGE = 2,
 }
+
+export enum GuildMFALevel {
+    NONE = 0,
+    ELEVATED = 1,
+}
+
+export interface GuildMfaSchema {
+    level: GuildMFALevel;
+}
+
+export interface GuildMfaResponse {
+    level: GuildMFALevel;
+}

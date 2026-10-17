@@ -15,10 +15,12 @@ export const stageModerator = async (userId: string, channelId: string) => {
     if (!channel?.guild_id || channel.type !== ChannelType.GUILD_STAGE_VOICE) throw DiscordApiErrors.UNKNOWN_CHANNEL;
     const permissions = await getPermission(userId, channel.guild_id, channel.id);
     if (!permissions.has("VIEW_CHANNEL")) throw DiscordApiErrors.UNKNOWN_CHANNEL;
+    const moderator = permissions.has("MANAGE_CHANNELS") && permissions.has("MUTE_MEMBERS") && permissions.has("MOVE_MEMBERS");
+    if (moderator) permissions.assertMfa("MANAGE_CHANNELS");
     return {
         channel,
         permissions,
-        moderator: permissions.has("MANAGE_CHANNELS") && permissions.has("MUTE_MEMBERS") && permissions.has("MOVE_MEMBERS"),
+        moderator,
     };
 };
 

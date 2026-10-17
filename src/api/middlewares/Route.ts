@@ -188,6 +188,7 @@ export function route(opts: RouteOptions) {
             requiredPerms.forEach((perm) => {
                 // bitfield comparison: check if user lacks certain permission
                 if (!req.permission!.has(new Permissions(perm))) throw perm === "VIEW_CHANNEL" ? DiscordApiErrors.MISSING_ACCESS : DiscordApiErrors.MISSING_PERMISSIONS;
+                req.permission!.assertMfa(perm);
             });
         }
 

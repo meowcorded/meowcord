@@ -62,7 +62,7 @@ router.post(
             throw new HTTPError("This channel doesn't exist", 404);
         }
         const { guild_id } = channel;
-        if ((body.flags ?? 0) & 8 && !req.permission?.has("KICK_MEMBERS")) throw DiscordApiErrors.MISSING_PERMISSIONS;
+        if ((body.flags ?? 0) & 8) req.permission?.hasThrow("KICK_MEMBERS");
 
         const max_age = Math.max(0, body.max_age ?? 86400);
         const expires_at = max_age == 0 ? undefined : new Date(max_age * 1000 + Date.now());

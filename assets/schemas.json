@@ -1166,6 +1166,32 @@
         ],
         "$schema": "http://json-schema.org/draft-07/schema#"
     },
+    "GuildMfaSchema": {
+        "type": "object",
+        "properties": {
+            "level": {
+                "$ref": "#/definitions/GuildMFALevel"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "level"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "GuildMfaResponse": {
+        "type": "object",
+        "properties": {
+            "level": {
+                "$ref": "#/definitions/GuildMFALevel"
+            }
+        },
+        "additionalProperties": false,
+        "required": [
+            "level"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
     "InviteListResponse": {
         "type": "array",
         "items": {
@@ -16044,6 +16070,14 @@
         "additionalProperties": false,
         "required": [
             "guild_ids"
+        ],
+        "$schema": "http://json-schema.org/draft-07/schema#"
+    },
+    "GuildMFALevel": {
+        "type": "number",
+        "enum": [
+            0,
+            1
         ],
         "$schema": "http://json-schema.org/draft-07/schema#"
     },

@@ -231,6 +231,7 @@ router.delete(
         const permission = await getPermission(req.user_id, guild_id, channel_id);
 
         if (!permission.has("MANAGE_GUILD") && !permission.has("MANAGE_CHANNELS")) throw new HTTPError("You missing the MANAGE_GUILD or MANAGE_CHANNELS permission", 401);
+        permission.assertMfa("MANAGE_GUILD");
 
         await Promise.all([
             Invite.delete({ code: invite_code }),

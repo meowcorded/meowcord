@@ -94,6 +94,7 @@ export const checkToken = (
                         "data",
                         "flags",
                         "verified",
+                        "mfa_enabled",
                         "federated_instance",
                         "created_at",
                     ]), // TODO: clean up

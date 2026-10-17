@@ -2,7 +2,7 @@
 // Apache License Version 2.0 Copyright 2015 - 2021 Amish Shah
 // @fc-license-skip
 
-import { Channel, Guild, Member, Role, ThreadMember, User } from "../../database/entities";
+import { Application, Channel, Guild, Member, Role, ThreadMember, User } from "../../database/entities";
 import { BitField, BitFieldResolvable, BitFlag } from "./BitField";
 import { HTTPError } from "lambert-server/HTTPError";
 import { DiscordApiErrors } from "./Constants";
@@ -93,6 +93,19 @@ export class Permissions extends BitField {
 
     static ALL_PERMISSIONS = Object.values(Permissions.FLAGS).reduce((total, val) => total | val, BigInt(0));
 
+    static ELEVATED_PERMISSIONS: bigint =
+        Permissions.FLAGS.ADMINISTRATOR |
+        Permissions.FLAGS.KICK_MEMBERS |
+        Permissions.FLAGS.BAN_MEMBERS |
+        Permissions.FLAGS.MANAGE_CHANNELS |
+        Permissions.FLAGS.MANAGE_GUILD |
+        Permissions.FLAGS.MANAGE_MESSAGES |
+        Permissions.FLAGS.MANAGE_ROLES |
+        Permissions.FLAGS.MANAGE_WEBHOOKS |
+        Permissions.FLAGS.MANAGE_EMOJIS_AND_STICKERS |
+        Permissions.FLAGS.MANAGE_THREADS |
+        Permissions.FLAGS.MODERATE_MEMBERS;
+
     any(permission: PermissionResolvable, checkAdmin = true) {
         return (checkAdmin && super.any(Permissions.FLAGS.ADMINISTRATOR)) || super.any(permission);
     }
@@ -109,8 +122,22 @@ export class Permissions extends BitField {
      */
     hasThrow(permission: PermissionResolvable) {
         if (!this.has("VIEW_CHANNEL")) throw DiscordApiErrors.MISSING_ACCESS;
-        if (this.has(permission)) return true;
-        throw DiscordApiErrors.MISSING_PERMISSIONS;
+        if (!this.has(permission)) throw DiscordApiErrors.MISSING_PERMISSIONS;
+        this.assertMfa(permission);
+        return true;
+    }
+
+    assertMfa(permission?: PermissionResolvable) {
+        const guild = this.cache.guild;
+        if (!guild?.mfa_level) return;
+        if (permission) {
+            const resolved = new Permissions(permission).bitfield;
+            if ((resolved & Permissions.ELEVATED_PERMISSIONS) === 0n) return;
+        }
+        const mfaEnabled = this.cache.mfa_enabled ?? this.cache.user?.mfa_enabled;
+        if (!mfaEnabled) {
+            throw DiscordApiErrors.TWO_FACTOR_REQUIRED;
+        }
     }
 
     overwriteChannel(overwrites: ChannelPermissionOverwrite[]) {
@@ -240,6 +267,8 @@ export type PermissionCache = {
     guild?: Guild | undefined;
     roles?: Role[] | undefined;
     user_id?: string;
+    user?: Pick<User, "id" | "flags" | "mfa_enabled" | "bot"> | undefined;
+    mfa_enabled?: boolean;
 };
 
 export async function getPermission(
@@ -253,7 +282,7 @@ export async function getPermission(
         channel_relations?: string[];
         member_select?: (keyof Member)[];
         member_relations?: string[];
-        user?: Pick<User, "id" | "flags">;
+        user?: Pick<User, "id" | "flags" | "mfa_enabled" | "bot">;
         member?: Member;
     } = {},
 ) {
@@ -263,11 +292,11 @@ export async function getPermission(
     let guild: Guild | undefined;
     let lurkerRoles: Role[] | undefined;
     const user =
-        opts.user?.id === user_id && opts.user.flags !== undefined
+        opts.user?.id === user_id && opts.user.flags !== undefined && opts.user.mfa_enabled !== undefined
             ? opts.user
             : await User.findOneOrFail({
                   where: { id: user_id },
-                  select: { id: true, flags: true },
+                  select: { id: true, flags: true, mfa_enabled: true, bot: true },
               });
     const query = {
         relations: OrmUtils.keysToObject(["recipients", "thread_members", "thread_members.member", ...(opts.channel_relations || [])]), // TODO: cleanup
@@ -280,6 +309,7 @@ export async function getPermission(
         if (channel.guild_id) guild_id = channel.guild_id; // derive guild_id from the channel
     } else if (channel_id) {
         channel = channel_id;
+        if (!guild_id && channel.guild_id) guild_id = channel.guild_id;
     }
     while (channel?.isThread() && channel.parent_id) {
         const parent = await Channel.createQueryBuilder("permission_parent")
@@ -302,19 +332,36 @@ export async function getPermission(
         channel = parent;
     }
 
+    let mfa_enabled = user.mfa_enabled;
+
     if (guild_id) {
         if (typeof guild_id === "string") {
             guild = await Guild.findOneOrFail({
                 where: { id: guild_id },
                 select: !opts.guild_select
-                    ? { id: true, owner_id: true, verification_level: true }
-                    : OrmUtils.keysToObject(["id", "owner_id", "verification_level", ...(<string[]>opts.guild_select || [])]), // TODO: clean up
+                    ? { id: true, owner_id: true, verification_level: true, mfa_level: true }
+                    : OrmUtils.keysToObject(["id", "owner_id", "verification_level", "mfa_level", ...(<string[]>opts.guild_select || [])]), // TODO: clean up
                 relations: !opts.guild_relations ? undefined : OrmUtils.keysToObject(opts.guild_relations), // TODO: clean up
             });
         } else {
             guild = guild_id;
         }
-        if (guild!.owner_id === user_id) return new Permissions(Permissions.FLAGS.ADMINISTRATOR);
+
+        if (user.bot && guild?.mfa_level) {
+            const app = await Application.findOne({
+                where: { bot: { id: user.id } },
+                relations: { owner: true },
+            });
+            if (app?.owner) {
+                mfa_enabled = app.owner.mfa_enabled;
+            }
+        }
+
+        if (guild!.owner_id === user_id) {
+            const ownerPermissions = new Permissions(Permissions.FLAGS.ADMINISTRATOR);
+            ownerPermissions.cache = { guild, channel, user_id, user, mfa_enabled };
+            return ownerPermissions;
+        }
 
         const preloaded = opts.member;
         const hydrated =
@@ -374,7 +421,7 @@ export async function getPermission(
     );
 
     // pass cache to permission for possible future getPermission calls
-    obj.cache = { guild, member, channel, roles: member?.roles, user_id };
+    obj.cache = { guild, member, channel, roles: member?.roles, user_id, user, mfa_enabled };
 
     return obj;
 }
