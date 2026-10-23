@@ -11,7 +11,6 @@ public meowcord instances. this file is generated from [instances.json](instance
 | Meowcerra | [meow.soccera.uk](https://meow.soccera.uk) | [soccera1/meowcord](https://github.com/soccera1/meowcord) |
 | idkcord | [ang.taild5450d.ts.net](https://ang.taild5450d.ts.net) | [anamelessguy1/meowcord](https://github.com/anamelessguy1/meowcord) |
 | Yuricord | [cord.yuri.llc](https://cord.yuri.llc) | [hazelcaffe/meowcord](https://github.com/hazelcaffe/meowcord) |
-| ORCBin | [orcbin.com](https://orcbin.com) |  |
 | Solarcord | [solarcord.xyz](https://solarcord.xyz) |  |
 | Voidcord | [voidcord.lab-xp.ovh](https://voidcord.lab-xp.ovh) | [NixLeVrai/voidcord](https://github.com/NixLeVrai/voidcord) |
 | 12Cord | [cord.area12.lol](https://cord.area12.lol) |  |
