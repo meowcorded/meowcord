@@ -153,9 +153,8 @@ router.patch(
         const new_message = await handleMessage(
             {
                 ...message,
-                // TODO: should message_reference be overridable?
-                message_reference: message.message_reference,
                 ...body,
+                message_reference: message.message_reference,
                 content: body.content === undefined ? message.content : (body.content ?? ""),
                 flags,
                 attachments: attachments ?? message.attachments,

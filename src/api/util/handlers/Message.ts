@@ -646,6 +646,7 @@ export async function handleMessage(
                     },
                 });
                 if (!referenced && opts.message_reference.fail_if_not_exists !== false) throw DiscordApiErrors.UNKNOWN_MESSAGE;
+                if (referenced && (referenced.guild_id ?? null) !== (channel.guild_id ?? null)) throw new HTTPError("You can only reference messages from this guild");
                 if (referenced && referenced.channel_id !== opts.message_reference.channel_id && opts.type !== MessageType.THREAD_STARTER_MESSAGE)
                     throw new HTTPError("Referenced message not found in the specified channel", 404);
                 if (referenced) message.referenced_message = referenced;
