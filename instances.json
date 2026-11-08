@@ -17,5 +17,6 @@
     { "id": "dc.polo.beer", "name": "Hola Quetal", "url": "https://dc.polo.beer", "source_url": null },
     { "id": "chat.gtdmc.org", "name": "GTDcord", "url": "https://chat.gtdmc.org", "source_url": null },
     { "id": "chat.femboy.cyou", "name": "FemCord", "url": "https://chat.femboy.cyou", "source_url": "https://github.com/MDCYT/femcord" },
-    { "id": "happycord.opuadm.com", "name": "Happycord", "url": "https://happycord.opuadm.com", "source_url": "https://github.com/opuadm/happycord" }
+    { "id": "happycord.opuadm.com", "name": "Happycord", "url": "https://happycord.opuadm.com", "source_url": "https://github.com/opuadm/happycord" },
+    { "id": "whycord.nostro.lol", "name": "whycord", "url": "https://whycord.nostro.lol", "source_url": "https://github.com/meowcorded/meowcord" }
 ]
