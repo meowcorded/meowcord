@@ -2,6 +2,7 @@ import { Attachments, UploadRef } from "./attachments";
 import { E2eeError, Engine, errorText, FALLBACK_CONTENT, mentionedIn, PLAINTEXT_CACHE_SIZE, RawMessage } from "./engine";
 import { BoundedMap } from "./boundedMap";
 import { Payload, StickerMeta } from "./files";
+import { isTransientRequestError } from "./network";
 import { DispatchHandler, Dispatcher, FluxAction, GatewayStore, HttpCall, HttpClient, HttpMethod, HttpOptions, HttpResponse } from "./webpack";
 import { t } from "./i18n";
 
@@ -86,7 +87,8 @@ export const createHooks = (ctx: HookContext) => {
     const { engine, states } = ctx;
     const inflight = new Map<string, Promise<void>>();
 
-    const retry = new Map<string, RawMessage>();
+    const retry = new BoundedMap<string, RawMessage>(256);
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const readable = new BoundedMap<string, Map<string, RawMessage>>(READABLE_CHANNELS);
     const searched = new Map<string, number>();
     const payloads = new BoundedMap<string, Payload>(PLAINTEXT_CACHE_SIZE);
@@ -209,10 +211,22 @@ export const createHooks = (ctx: HookContext) => {
                     remember(message);
                     previews(message);
                 } catch (error) {
+                    const transient = isTransientRequestError(error);
                     const code = error instanceof E2eeError ? error.code : null;
                     const state: MessageState = code === "LOCKED" ? "locked" : code === "NO_KEY" ? "missing" : code === "RESET" ? "reset" : "failed";
                     states.set(message.id, { state, reason: errorText(error) });
-                    if (state === "locked" || state === "missing") retry.set(message.id, original);
+                    if (transient || state === "locked" || state === "missing") retry.set(message.id, original);
+                    if (transient && !retryTimer) {
+                        const retryAfter = Number(error?.body?.retry_after);
+                        const delay = Number.isFinite(retryAfter)
+                            ? Math.max(30_000, retryAfter * 1000 + 1000)
+                            : 30_000;
+                        
+                        retryTimer = setTimeout(() => {
+                            retryTimer = null;
+                            retryAll();
+                        }, Math.min(delay, 2_147_483_647));
+                    }
                     message.content = contentFor(state, undefined, engine.trustsServer);
                 }
             })().finally(() => inflight.delete(key));
