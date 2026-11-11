@@ -26,6 +26,7 @@ import { outboundProxyStatus } from "../util/util/networking/SocksTransport";
 import { Monitoring } from "../util/monitoring/Monitoring";
 import { BcryptWorkerPool } from "../util/util/workers/bcrypt/BcryptWorkerPool";
 import { Authentication, CORS, ExternalProxy, ImageProxy, KlipyProxy, BodyParser, ErrorHandler, initRateLimits, initTopLevelRateLimits, initTranslation } from "./middlewares";
+import { normalizeRequestPath } from "./middlewares/NormalizeRequestPath";
 import { initInstance } from "./util/handlers/Instance";
 import { initEmbeddedActivities } from "./activities";
 import {
@@ -70,6 +71,7 @@ export class SpacebarServer extends Server {
     }
 
     async mount() {
+        this.app.use(normalizeRequestPath);
         this.app.set("json replacer", JSONReplacer);
         this.app.disable("x-powered-by");
 

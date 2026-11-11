@@ -21,7 +21,6 @@ import { installShutdownSignals } from "./Shutdown";
 import { ActivityHost } from "@spacebar/api/activities/ActivityHost";
 import { normalizeRequestPath } from "../api/middlewares/NormalizeRequestPath";
 
-
 const app = express();
 app.use(normalizeRequestPath);
 const server = http.createServer();

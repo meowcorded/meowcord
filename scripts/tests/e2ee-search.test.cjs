@@ -35,9 +35,10 @@ test("search queries collect repeated and bracketed array parameters", () => {
     });
 });
 
-test("search queries ignore unrelated bracket names", () => {
-    const query = search.readSearchQuery(new URLSearchParams("has[foo]=image&has[0]=link"));
+test("search queries ignore unrelated bracket names and empty values", () => {
+    const query = search.readSearchQuery(new URLSearchParams("has[foo]=image&has[0]=link&has=&author_id="));
     assert.deepEqual(plain(query.has), ["link"]);
+    assert.deepEqual(plain(query.author_id), []);
 });
 
 test("search requires every content word and matches authors", () => {
@@ -74,6 +75,8 @@ test("positive contains filters are ORed and exclusions are ANDed", () => {
 test("empty queries pass and unknown filters do not match messages", () => {
     assert.equal(search.matchesSearch(message(), {}), true);
     assert.equal(search.matchesSearch(message(), { content: "   " }), true);
+    assert.equal(search.matchesSearch(message(), { has: "" }), true);
+    assert.equal(search.matchesSearch(message(), { author_id: "" }), true);
     assert.equal(search.matchesSearch(message(), { has: "unknown" }), false);
     assert.equal(search.matchesSearch(message(), { has: "-unknown" }), true);
 });

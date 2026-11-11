@@ -849,20 +849,22 @@ export async function getOrUpdateEmbedCache(urls: string[], cb?: (url: string, e
     let off = 0;
     const generatedEmbeds = await Promise.all(
         urlsToGenerate.map(async (link) => {
-            await sleep(getSlowdownFactor(off++)); // ...or nodejs gets overwhelmed and times out
             const key = normalizeUrl(link);
             let pending = pendingEmbeds.get(key);
 
             if (!pending) {
-                pending = generateEmbedSingle(link)
-                    .finally(() => pendingEmbeds.delete(key));
-                pendingEmbeds.set(key, pending);
+                await sleep(getSlowdownFactor(off++)); // ...or nodejs gets overwhelmed and times out
+                pending = pendingEmbeds.get(key);
+                if (!pending) {
+                    pending = generateEmbedSingle(link).finally(() => pendingEmbeds.delete(key));
+                    pendingEmbeds.set(key, pending);
+                }
             }
 
             const result = await pending;
             if (result) await cb?.(link, result.embeds ?? []);
 
-            return pending;
+            return result;
         }),
     );
 

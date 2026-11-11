@@ -100,7 +100,7 @@ ${final ? 1 : 0}`);
           port.close();
         resolve(answer);
       };
-      const timer = setTimeout(() => resolve(null), timeoutMs);
+      const timer = setTimeout(() => finish(null), timeoutMs);
       for (const client of windows) {
         const channel = new MessageChannel;
         ports.push(channel.port1);
@@ -110,7 +110,13 @@ ${final ? 1 : 0}`);
             return;
           finish(answer);
         };
-        client.postMessage(message, [channel.port2]);
+        try {
+          client.postMessage(message, [channel.port2]);
+        } catch {
+          channel.port1.close();
+          if (--left <= 0)
+            finish(null);
+        }
       }
     });
   };

@@ -1,5 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const { loadModule } = require("./helpers/route-harness.cjs");
 
 function harness() {
@@ -26,6 +27,7 @@ test("the gateway advertises 30 seconds and allows three missed heartbeats", () 
     assert.equal(heartbeat.HEARTBEAT_INTERVAL_MS, 30_000);
     assert.equal(heartbeat.HEARTBEAT_TIMEOUT_MS, 90_000);
     assert.equal(heartbeat.HEARTBEAT_TIMEOUT_MS, heartbeat.HEARTBEAT_INTERVAL_MS * 3);
+    assert.match(fs.readFileSync("src/gateway/events/Connection.ts", "utf8"), /heartbeat_interval: HEARTBEAT_INTERVAL_MS/);
 });
 
 test("a heartbeat schedules a 90 second close and replaces the previous timer", () => {

@@ -31,7 +31,7 @@ const flush = async () => {
     for (let i = 0; i < 100; i++) await Promise.resolve();
 };
 
-function harness() {
+function harness(options = {}) {
     const timers = [];
     let now = 0;
     const calls = [];
@@ -42,13 +42,14 @@ function harness() {
     const engine = {
         trustsServer: false,
         cached: () => undefined,
+        isEncrypted: () => true,
         decrypt: async (message) => {
             calls.push(message.id);
             if (remainingFailures > 0) {
                 remainingFailures--;
                 throw failure;
             }
-            return { content: "decrypted", attachments: [], stickers: [] };
+            return options.payload ?? { content: "decrypted", attachments: [], stickers: [] };
         },
     };
 
@@ -85,13 +86,14 @@ function harness() {
                 if (timer) timer.done = true;
             },
             console,
+            URLSearchParams,
         },
     );
 
     const instance = hooks.createHooks({
         engine,
         states,
-        attachments: { apply: () => {} },
+        attachments: { apply: options.apply ?? (() => {}) },
         sticker: () => null,
         ready: Promise.resolve(true),
         failClosed: () => false,
@@ -101,7 +103,7 @@ function harness() {
         onCredentials: () => {},
         onLogout: () => {},
         onError: () => {},
-        fetchEmbeds: async () => ({}),
+        fetchEmbeds: options.fetchEmbeds ?? (async () => ({})),
         fetchSoundmoji: async () => [],
     });
 
@@ -136,6 +138,28 @@ const message = (id = "1") => ({
     encrypted: { sig: `sig-${id}` },
 });
 
+const http = (getBody = []) => {
+    const gets = [];
+    const calls = Object.fromEntries(
+        ["get", "post", "put", "patch", "del"].map((method) => [
+            method,
+            async (options) => {
+                if (method === "get") gets.push(options);
+                return { ok: true, status: 200, body: method === "get" ? getBody : {} };
+            },
+        ]),
+    );
+    return { calls, gets };
+};
+
+const deferred = () => {
+    let resolve;
+    const promise = new Promise((accept) => {
+        resolve = accept;
+    });
+    return { promise, resolve };
+};
+
 test("a transient failure is queued and retried without waiting for a reload", async () => {
     const h = harness();
     h.fail(1, { status: 503 });
@@ -145,7 +169,7 @@ test("a transient failure is queued and retried without waiting for a reload", a
     assert.equal(h.timers[0].ms, 30_000);
 
     h.succeed();
-    h.instance.retryAll();
+    h.instance.retryAll(true);
     await flush();
     assert.equal(h.states.get("1").state, "decrypted");
     assert.deepEqual(h.calls, ["1", "1"]);
@@ -178,7 +202,7 @@ test("non-transient failures are not queued for retry", async () => {
     assert.equal(h.states.get("1").state, "failed");
     assert.equal(h.timers.length, 0);
 
-    h.instance.retryAll();
+    h.instance.retryAll(true);
     await flush();
     assert.deepEqual(h.calls, ["1"]);
 });
@@ -200,7 +224,83 @@ test("the retry queue keeps at most 256 messages", async () => {
     h.fail(300, { status: 503 });
     await h.instance.decryptAll(messages);
     h.succeed();
-    h.instance.retryAll();
+    h.instance.retryAll(true);
     await flush();
     assert.equal(h.calls.length, 300 + 256);
+});
+
+test("a longer rate limit replaces the earlier retry deadline", async () => {
+    const h = harness();
+    h.fail(1, { status: 503 });
+    await h.instance.decryptAll([message("1")]);
+    h.advance(1000);
+    h.fail(1, { status: 429, body: { retry_after: 120 } });
+    await h.instance.decryptAll([message("2")]);
+
+    assert.equal(h.timers[0].done, true);
+    const pending = h.timers.filter((timer) => !timer.done);
+    assert.equal(pending.length, 1);
+    assert.equal(pending[0].at, 122_000);
+
+    h.succeed();
+    h.instance.retryAll();
+    await flush();
+    assert.deepEqual(h.calls, ["1", "2"]);
+
+    h.advance(30_000);
+    await flush();
+    assert.deepEqual(h.calls, ["1", "2"]);
+
+    h.advance(91_000);
+    await flush();
+    assert.deepEqual(h.calls, ["1", "2", "1", "2"]);
+});
+
+test("evicted retry entries are recovered by refreshing the channel", async () => {
+    const h = harness();
+    const messages = Array.from({ length: 300 }, (_, index) => message(String(index + 1)));
+    h.fail(300, { status: 503 });
+    await h.instance.decryptAll(messages);
+    h.succeed();
+
+    const transport = http([message("1")]);
+    h.instance.wrapHttp(transport.calls);
+    h.instance.retryAll(true);
+    await flush();
+    await flush();
+    await flush();
+
+    assert.equal(transport.gets.length, 1);
+    assert.equal(transport.gets[0].url, "/channels/10/messages");
+    assert.equal(transport.gets[0].query.limit, 100);
+    assert.equal(h.states.get("1").state, "decrypted");
+});
+
+test("media search waits for in-flight previews before filtering", async () => {
+    const previews = deferred();
+    const h = harness({
+        payload: { content: "https://video.test/clip", attachments: [], stickers: [] },
+        apply: (message, payload) => {
+            message.content = payload.content;
+        },
+        fetchEmbeds: () => previews.promise,
+    });
+    const transport = http([]);
+    h.instance.wrapHttp(transport.calls);
+
+    await h.instance.decryptAll([message()]);
+    let settled = false;
+    const response = h.instance
+        .wrapHttp(transport.calls)
+        .get({ url: "/channels/10/messages/search", query: { has: "video" } })
+        .then((value) => {
+            settled = true;
+            return value;
+        });
+    await flush();
+    assert.equal(settled, false);
+
+    previews.resolve({ "https://video.test/clip": [{ type: "video" }] });
+    const result = await response;
+    assert.equal(result.body.total_results, 1);
 });

@@ -1,6 +1,6 @@
 export class EncryptionNetworkError extends Error {
     constructor(readonly cause: unknown) {
-        super("Encryption couldn't reach the server", {cause});
+        super("Encryption couldn't reach the server", { cause });
     }
 }
 

@@ -80,13 +80,38 @@ export const createHooks = (ctx: HookContext) => {
     const { engine, states } = ctx;
     const inflight = new Map<string, Promise<void>>();
 
-    const retry = new BoundedMap<string, RawMessage>(256);
+    const retry = new Map<string, RawMessage>();
+    const retryChannels = new Set<string>();
+    const RETRY_LIMIT = 256;
+    const RETRY_CHANNEL_LIMIT = 50;
+    const PREVIEW_WAIT_MS = 10_000;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let retryAt = 0;
+    let retryDelay = 0;
+    let recovering: Promise<void> | null = null;
+    let originalHttp: HttpClient | null = null;
     const readable = new BoundedMap<string, Map<string, RawMessage>>(READABLE_CHANNELS);
     const searched = new Map<string, number>();
     const payloads = new BoundedMap<string, Payload>(PLAINTEXT_CACHE_SIZE);
+    const previewing = new Map<string, Promise<void>>();
     let dispatcher: Dispatcher | null = null;
     const clone = (message: RawMessage) => JSON.parse(JSON.stringify(message)) as RawMessage;
+
+    const queueRetry = (message: RawMessage) => {
+        if (retry.has(message.id)) retry.delete(message.id);
+        while (retry.size >= RETRY_LIMIT) {
+            const oldest = retry.entries().next();
+            if (oldest.done) break;
+            const [id, evicted] = oldest.value;
+            retry.delete(id);
+            states.set(id, { state: "failed", reason: t("Too many messages are waiting to decrypt. Reopen this conversation to retry.") });
+            if (evicted.channel_id) {
+                retryChannels.add(evicted.channel_id);
+                while (retryChannels.size > RETRY_CHANNEL_LIMIT) retryChannels.delete(retryChannels.values().next().value as string);
+            }
+        }
+        retry.set(message.id, message);
+    };
 
     const remember = (message: RawMessage) => {
         let channel = readable.get(message.channel_id);
@@ -114,13 +139,13 @@ export const createHooks = (ctx: HookContext) => {
     const previewed = new BoundedMap<string, unknown[]>(500);
     const previews = (message: RawMessage) => {
         try {
-            if (localStorage.getItem("fosscord-e2ee-previews") === "0") return;
+            if (localStorage.getItem("fosscord-e2ee-previews") === "0") return Promise.resolve();
         } catch {
             /* storage unavailable: previews stay on */
         }
         const text = typeof message.content === "string" ? message.content : "";
         const urls = [...new Set((text.match(/<?https?:\/\/[^\s<>]+>?/g) ?? []).filter((u) => !u.startsWith("<")))].slice(0, 5);
-        if (!urls.length) return;
+        if (!urls.length) return Promise.resolve();
         const apply = (found: Record<string, unknown[]>) => {
             const embeds = urls.flatMap((u) => found[u] ?? previewed.get(u) ?? []);
             if (!embeds.length) return;
@@ -131,13 +156,25 @@ export const createHooks = (ctx: HookContext) => {
             redispatch(copy);
         };
         const missing = urls.filter((u) => !previewed.has(u));
-        if (!missing.length) return void setTimeout(() => apply({}), 300);
-        ctx.fetchEmbeds(missing)
-            .then((found) => {
-                for (const u of missing) previewed.set(u, found[u] ?? []);
-                apply(found);
-            })
-            .catch(() => {});
+        const pending = missing.length
+            ? ctx
+                  .fetchEmbeds(missing)
+                  .then((found) => {
+                      for (const u of missing) previewed.set(u, found[u] ?? []);
+                      apply(found);
+                  })
+                  .catch(() => {})
+            : new Promise<void>((resolve) =>
+                  setTimeout(() => {
+                      apply({});
+                      resolve();
+                  }, 300),
+              );
+        previewing.set(message.id, pending);
+        pending.finally(() => {
+            if (previewing.get(message.id) === pending) previewing.delete(message.id);
+        });
+        return pending;
     };
 
     // Soundmojis (<sound:guild:id>) are attached by the server for ordinary messages. For encrypted ones the ids found
@@ -185,7 +222,7 @@ export const createHooks = (ctx: HookContext) => {
                 });
                 message.content = t(FAILED_CONTENT);
             } else {
-                retry.set(message.id, clone(message));
+                queueRetry(clone(message));
                 states.set(message.id, { state: "pending" });
                 message.content = decryptingContent();
             }
@@ -208,17 +245,21 @@ export const createHooks = (ctx: HookContext) => {
                     const code = error instanceof E2eeError ? error.code : null;
                     const state: MessageState = code === "LOCKED" ? "locked" : code === "NO_KEY" ? "missing" : code === "RESET" ? "reset" : "failed";
                     states.set(message.id, { state, reason: errorText(error) });
-                    if (transient || state === "locked" || state === "missing") retry.set(message.id, original);
-                    if (transient && !retryTimer) {
+                    if (transient || state === "locked" || state === "missing") queueRetry(original);
+                    if (transient) {
                         const retryAfter = Number((error as { body?: { retry_after?: unknown } })?.body?.retry_after);
-                        const delay = Number.isFinite(retryAfter)
-                            ? Math.max(30_000, retryAfter * 1000 + 1000)
-                            : 30_000;
-                        
-                        retryTimer = setTimeout(() => {
-                            retryTimer = null;
-                            retryAll();
-                        }, Math.min(delay, 2_147_483_647));
+                        const delay = Math.min(Number.isFinite(retryAfter) ? Math.max(30_000, retryAfter * 1000 + 1000) : 30_000, 2_147_483_647);
+                        if (!retryTimer || delay > retryDelay) {
+                            if (retryTimer) clearTimeout(retryTimer);
+                            retryAt = Date.now() + delay;
+                            retryDelay = delay;
+                            retryTimer = setTimeout(() => {
+                                retryTimer = null;
+                                retryAt = 0;
+                                retryDelay = 0;
+                                retryAll(true);
+                            }, delay);
+                        }
                     }
                     message.content = contentFor(state, undefined, engine.trustsServer);
                 }
@@ -240,8 +281,49 @@ export const createHooks = (ctx: HookContext) => {
         if (states.get(copy.id)?.state === "decrypted") ctx.updateRecord(copy);
     };
 
-    const retryAll = () => {
+    const decryptAll = async (value: unknown) => {
+        const messages = collect(value, []);
+        if (messages.length) await Promise.all(messages.map(decryptOne));
+    };
+
+    const recoverChannels = () => {
+        if (recovering) return recovering;
+        if (!originalHttp || !retryChannels.size) return Promise.resolve();
+        const channels = [...retryChannels];
+        retryChannels.clear();
+        recovering = (async () => {
+            for (const channelId of channels) {
+                let before = "";
+                for (let page = 0; page < 5; page++) {
+                    const res = await originalHttp!
+                        .get({
+                            url: `/channels/${channelId}/messages`,
+                            query: { limit: 100, ...(before && { before }) },
+                            rejectWithError: false,
+                        })
+                        .catch(() => null);
+                    if (!res?.ok) break;
+                    const batch = Array.isArray(res.body) ? (res.body as RawMessage[]) : [];
+                    await decryptAll(batch);
+                    if (batch.length < 100) break;
+                    before = batch[batch.length - 1].id;
+                }
+            }
+        })()
+            .catch(() => {})
+            .finally(() => {
+                recovering = null;
+            });
+        return recovering;
+    };
+
+    const retryAll = (force = false) => {
         if (!ctx.isReady()) return;
+        if (!force && retryAt > Date.now()) return;
+        if (retryTimer) clearTimeout(retryTimer);
+        retryTimer = null;
+        retryAt = 0;
+        retryDelay = 0;
         const queued = [...retry.values()];
         retry.clear();
         for (const copy of queued) {
@@ -253,11 +335,7 @@ export const createHooks = (ctx: HookContext) => {
                 ctx.onState();
             });
         }
-    };
-
-    const decryptAll = async (value: unknown) => {
-        const messages = collect(value, []);
-        if (messages.length) await Promise.all(messages.map(decryptOne));
+        void recoverChannels();
     };
 
     const encryptBody = async (method: HttpMethod, opts: HttpOptions) => {
@@ -311,6 +389,29 @@ export const createHooks = (ctx: HookContext) => {
         return { ...opts, body };
     };
 
+    const wantsPreviewDependencies = (queries: SearchQuery[]) =>
+        queries.some((query) =>
+            [query.has ?? []].flat().some((filter) => {
+                const name = String(filter).replace(/^-/, "");
+                return name === "embed" || name === "image" || name === "video";
+            }),
+        );
+
+    const waitForPreviews = async (channelId: string) => {
+        const channel = readable.get(channelId);
+        if (!channel) return;
+        const pending = [...new Set([...channel.keys()].map((id) => previewing.get(id)).filter((promise): promise is Promise<void> => !!promise))];
+        if (!pending.length) return;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+        await Promise.race([
+            Promise.allSettled(pending),
+            new Promise<void>((resolve) => {
+                timer = setTimeout(resolve, PREVIEW_WAIT_MS);
+            }),
+        ]);
+        if (timer) clearTimeout(timer);
+    };
+
     const searchLocally = async (originals: HttpClient, channelId: string, queries: SearchQuery[]) => {
         if (Date.now() - (searched.get(channelId) ?? 0) > 60000) {
             let before = "";
@@ -329,6 +430,7 @@ export const createHooks = (ctx: HookContext) => {
             }
             searched.set(channelId, Date.now());
         }
+        if (wantsPreviewDependencies(queries)) await waitForPreviews(channelId);
         const all = [...(readable.get(channelId)?.values() ?? [])].filter((m) => states.get(m.id)?.state === "decrypted").sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1));
         return queries.map((query) => {
             const hits = all.filter((message) => matchesSearch(message, query));
@@ -348,6 +450,7 @@ export const createHooks = (ctx: HookContext) => {
 
     const wrapHttp = (http: HttpClient) => {
         const originals = { ...http };
+        originalHttp = originals;
         for (const method of ["get", "post", "put", "patch", "del"] as HttpMethod[]) {
             const original = originals[method];
             const wrapped: HttpCall = (input, callback) => {

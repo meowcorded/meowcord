@@ -33,24 +33,17 @@ export function normalizeMessageSearchQuery(query: MessageSearchQuery): MessageS
     const normalized = { ...query };
 
     for (const key of ["has", "author_id", "author_type", "mentions", "channel_id"]) {
-        const bracketed = Object.keys(query).filter(
-            (name) =>
-                name.startsWith(`${key}[`) &&
-                /^\[\d*\]$/.test(name.slice(key.length))
-        );
+        const bracketed = Object.keys(query).filter((name) => name.startsWith(`${key}[`) && /^\[\d*\]$/.test(name.slice(key.length)));
 
         if (!bracketed.length) continue;
 
-        normalized[key] = [
-            ...list(query[key]),
-            ...bracketed.flatMap((name) => list(query[name])),
-        ];
+        normalized[key] = [...list(query[key]), ...bracketed.flatMap((name) => list(query[name]))];
 
         for (const name of bracketed) delete normalized[name];
     }
 
     return normalized;
-};
+}
 
 const assertSearchQuery = (query: MessageSearchQuery) => {
     const errors = messageSearchErrors(query);

@@ -9,11 +9,14 @@ export interface SearchQuery {
     sort_order?: string;
 }
 
-const values = (value: unknown): string[] => (value == null ? [] : (Array.isArray(value) ? value : [value]).map(String));
+const values = (value: unknown): string[] => (value == null ? [] : Array.isArray(value) ? value : [value]).map(String).filter((entry) => entry.length);
 
 export function readSearchQuery(params: URLSearchParams): SearchQuery {
     const list = (key: string) =>
-        [...params].filter(([name]) => name === key || (name.startsWith(`${key}[`) && /^\[\d*\]$/.test(name.slice(key.length)))).map(([, value]) => value);
+        [...params]
+            .filter(([name]) => name === key || (name.startsWith(`${key}[`) && /^\[\d*\]$/.test(name.slice(key.length))))
+            .map(([, value]) => value)
+            .filter((value) => value.length);
     return {
         content: params.get("content") ?? undefined,
         author_id: list("author_id"),

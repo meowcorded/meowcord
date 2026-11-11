@@ -136,6 +136,12 @@ function startupHarness({ token = "stored-token", initError = null } = {}) {
         onUnlock() {}
         onWipe() {}
         onChange() {}
+        invalidateAll() {
+            this.invalidated = (this.invalidated ?? 0) + 1;
+        }
+        async refresh() {
+            this.refreshed = (this.refreshed ?? 0) + 1;
+        }
         isEncrypted() {
             return true;
         }
@@ -152,7 +158,13 @@ function startupHarness({ token = "stored-token", initError = null } = {}) {
         verify: async (_key, message) => message === "self-test",
     };
     const ui = { pause() {}, refresh() {}, fail() {}, unlockSnoozed: () => false };
-    const window = { addEventListener() {} };
+    const listeners = {};
+    const window = {
+        addEventListener(type, listener) {
+            (listeners[type] ??= []).push(listener);
+        },
+    };
+    let retries = 0;
     const require = (name) => {
         if (name === "./attachments") return { createAttachments: () => ({ start() {}, ready: () => worker.promise }) };
         if (name === "./bytes")
@@ -163,7 +175,7 @@ function startupHarness({ token = "stored-token", initError = null } = {}) {
         if (name === "./crypto") return crypto;
         if (name === "./engine") return { Engine };
         if (name === "./network") return network;
-        if (name === "./hooks") return { createHooks: () => ({ retryAll() {} }) };
+        if (name === "./hooks") return { createHooks: () => ({ retryAll: () => retries++ }) };
         if (name === "./link") return { createLink: () => ({ start() {}, stop() {}, outgoing: () => null }) };
         if (name === "./ui") return { createUi: () => ui };
         if (name === "./store") return { browserStorage: { getItem: (key) => (key === "token" && token ? JSON.stringify(token) : null) } };
@@ -173,7 +185,7 @@ function startupHarness({ token = "stored-token", initError = null } = {}) {
     };
     const source =
         compile("client/e2ee/src/index.ts").replace(/tick\(\);\s*$/, "") +
-        "\nexports.test={start,startWhenReady,ready,api,logout:()=>{loggedOut=true;},setGateway:(value)=>{targets.gateway=value;},initialized:()=>initialized,setHttp:(value)=>{http=value;},settleReady:()=>{Object.assign(installed,{http:true,dispatcher:true,gateway:true});tick();}};";
+        "\nexports.test={start,startWhenReady,ready,api,logout:()=>{loggedOut=true;},setGateway:(value)=>{targets.gateway=value;},initialized:()=>initialized,setHttp:(value)=>{http=value;},settleReady:()=>{Object.assign(installed,{http:true,dispatcher:true,gateway:true});tick();},engine:()=>engine};";
     vm.runInNewContext(source, {
         module,
         exports: module.exports,
@@ -207,6 +219,11 @@ function startupHarness({ token = "stored-token", initError = null } = {}) {
     return {
         api: module.exports.test,
         worker,
+        engine: () => module.exports.test.engine(),
+        retries: () => retries,
+        fire: (type) => {
+            for (const listener of listeners[type] ?? []) listener({});
+        },
         requested: () => requested,
         advance: (ms) => {
             now += ms;
@@ -234,6 +251,30 @@ test("startup retries a transient request failure without disabling encryption",
     h.advance(5000);
     await flush();
     assert.equal(h.api.initialized(), true);
+});
+
+test("startup retries a transport failure without disabling encryption", async () => {
+    const h = startupHarness({ initError: network.requestFailure(new TypeError("fetch failed")) });
+    await h.api.start("123");
+    assert.equal(h.api.initialized(), false);
+    h.advance(5000);
+    await flush();
+    assert.equal(h.api.initialized(), true);
+});
+
+test("browser online recovery invalidates keys and retries decryption", async () => {
+    const h = startupHarness();
+    await h.api.start("123");
+    h.api.settleReady();
+    assert.equal(h.api.initialized(), true);
+
+    h.fire("online");
+    assert.equal(h.engine().invalidated, 1);
+    assert.equal(h.retries(), 1);
+
+    h.advance(500);
+    await flush();
+    assert.equal(h.engine().refreshed, 1);
 });
 
 test("startup does not retry a non-transient failure without a status", async () => {

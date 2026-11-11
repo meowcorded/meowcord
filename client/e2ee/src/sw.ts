@@ -58,7 +58,7 @@ const ask = async <T>(message: Record<string, unknown>, clientId = "", timeoutMs
             for (const port of ports) port.close();
             resolve(answer);
         };
-        const timer = setTimeout(() => resolve(null), timeoutMs);
+        const timer = setTimeout(() => finish(null), timeoutMs);
         for (const client of windows) {
             const channel = new MessageChannel();
             ports.push(channel.port1);
@@ -67,7 +67,12 @@ const ask = async <T>(message: Record<string, unknown>, clientId = "", timeoutMs
                 if (!answer && --left > 0) return;
                 finish(answer);
             };
-            client.postMessage(message, [channel.port2]);
+            try {
+                client.postMessage(message, [channel.port2]);
+            } catch {
+                channel.port1.close();
+                if (--left <= 0) finish(null);
+            }
         }
     });
 };
@@ -101,7 +106,7 @@ const plaintext = (path: string, entry: FileEntry) => {
 const missing = (reason: string) =>
     new Response("This content is no longer available.", {
         status: 404,
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-E2EE-Error": reason, },
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-E2EE-Error": reason },
     });
 
 const poster = async (path: string, entry: FileEntry, blob: Blob, clientId: string) => {
