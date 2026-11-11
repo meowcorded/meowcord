@@ -44,6 +44,7 @@ const fetched = [];
 const updates = [];
 const events = [];
 const stored = new Map();
+const cached = [];
 const embeds = load("src/api/util/utility/EmbedHandlers.ts", {
     cheerio: require("cheerio"),
     "probe-image-size": async () => ({ width: 640, height: 480 }),
@@ -58,7 +59,19 @@ const embeds = load("src/api/util/utility/EmbedHandlers.ts", {
         },
     },
     typeorm: { In: (values) => values },
-    "@spacebar/database": { EmbedCache: {}, Message: { findOne: async ({ where }) => stored.get(where.id), update: async (...args) => updates.push(args) } },
+    "@spacebar/database": {
+        EmbedCache: {
+            find: async () => [],
+            delete: async () => {},
+            create: (value) => ({
+                save: async () => {
+                    cached.push(value);
+                    return value;
+                },
+            }),
+        },
+        Message: { findOne: async ({ where }) => stored.get(where.id), update: async (...args) => updates.push(args) },
+    },
     "@spacebar/extensions": { sleep: async () => {}, arrayDistinctBy: (a) => a, arrayGroupBy: () => new Map(), normalizeUrl: (u) => u },
     "@spacebar/util": {
         ...media,
@@ -77,6 +90,24 @@ const typed =
     (type, status = 200, body = "bytes") =>
     () =>
         new Response(body, { status, headers: { "content-type": type, "content-length": String(body.length) } });
+
+test("concurrent readers share embed generation and each receive the result", async () => {
+    const link = "https://media.test/concurrent.png";
+    routes.set(link, typed("image/png"));
+    const results = [];
+    const before = cached.length;
+    await Promise.all(Array.from({ length: 5 }, () => embeds.getOrUpdateEmbedCache([link], async (url, found) => results.push({ url, found }))));
+    assert.equal(cached.length - before, 1);
+    assert.equal(results.length, 5);
+    assert.ok(results.every(({ url, found }) => url === link && found.length === 1));
+});
+
+test("local encrypted attachment URLs are not fetched as public embed images", async () => {
+    const before = fetched.length;
+    const result = await embeds.getOrUpdateEmbedCache(["https://instance.test/e2ee/attachments/1/2/image.png"]);
+    assert.equal(result.length, 0);
+    assert.equal(fetched.length, before);
+});
 
 test("a youtube link becomes an iframe player that the client opens instead of a proxied video file", async () => {
     routes.set("https://www.youtube.com/oembed?format=json&url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DwzWxtKxD-mc", () =>

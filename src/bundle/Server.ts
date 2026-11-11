@@ -19,8 +19,10 @@ import { Monitoring } from "../util/monitoring/Monitoring";
 import TestClient, { TestClientAssets } from "./TestClient";
 import { installShutdownSignals } from "./Shutdown";
 import { ActivityHost } from "@spacebar/api/activities/ActivityHost";
+import { normalizeRequestPath } from "../api/middlewares/NormalizeRequestPath";
 
 const app = express();
+app.use(normalizeRequestPath);
 const server = http.createServer();
 let secureServer: http2.Http2SecureServer | undefined;
 const secureSessions = new Set<http2.ServerHttp2Session>();

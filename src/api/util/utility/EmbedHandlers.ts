@@ -817,6 +817,8 @@ function getSlowdownFactor(off: number) {
     return 1000 + off * 150;
 }
 
+const pendingEmbeds = new Map<string, Promise<EmbedCache | null>>();
+
 export async function getOrUpdateEmbedCache(urls: string[], cb?: (url: string, embeds: Embed[]) => Promise<void>): Promise<EmbedCache[]> {
     urls = arrayDistinctBy(urls, (x) => x);
     const embeds: EmbedCache[] = [];
@@ -847,8 +849,22 @@ export async function getOrUpdateEmbedCache(urls: string[], cb?: (url: string, e
     let off = 0;
     const generatedEmbeds = await Promise.all(
         urlsToGenerate.map(async (link) => {
-            await sleep(getSlowdownFactor(off++)); // ...or nodejs gets overwhelmed and times out
-            return await generateEmbedSingle(link, cb);
+            const key = normalizeUrl(link);
+            let pending = pendingEmbeds.get(key);
+
+            if (!pending) {
+                await sleep(getSlowdownFactor(off++)); // ...or nodejs gets overwhelmed and times out
+                pending = pendingEmbeds.get(key);
+                if (!pending) {
+                    pending = generateEmbedSingle(link).finally(() => pendingEmbeds.delete(key));
+                    pendingEmbeds.set(key, pending);
+                }
+            }
+
+            const result = await pending;
+            if (result) await cb?.(link, result.embeds ?? []);
+
+            return result;
         }),
     );
 
@@ -858,8 +874,10 @@ export async function getOrUpdateEmbedCache(urls: string[], cb?: (url: string, e
 }
 
 async function generateEmbedSingle(link: string, cb?: (url: string, embeds: Embed[]) => Promise<void>): Promise<EmbedCache | null> {
+    if (!URL.canParse(link)) return null;
     const url = new URL(link);
     const isLocal = url.origin === new URL(Config.get().cdn.endpointPublic!).origin;
+    if (isLocal && !isTrustedCdnAsset(url, Config.get().cdn.endpointPublic ?? undefined)) return null;
     if (!isLocal && !Config.get().externalRequests.thirdParty) return null;
     const handler = isLocal ? EmbedHandlers["self"] : (EmbedHandlers[url.hostname] ?? EmbedHandlers["default"]);
     try {

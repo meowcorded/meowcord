@@ -207,6 +207,8 @@ The free Shop lists `assets/collectibles.json` and `assets/profile-effects.json`
 
 Or set `COLLECTIBLES_EXTERNAL_REFRESH=true`, `COLLECTIBLES_CATALOG_URL` and `PROFILE_EFFECTS_CATALOG_URL` without read-only mounts. The server then downloads both every 12 hours, or every `COLLECTIBLES_REFRESH_HOURS`, and keeps the last good copy in memory. It also tries to save the copy in `assets`, which only lasts on a native install where that directory is writable. The admin dashboard's Shop catalogue card shows the source and the last error.
 
+Catalogue URLs must return JSON arrays. Discord's authenticated API and a profile effects response wrapped in `profile_effect_configs` cannot be used directly. An archived catalogue is a snapshot, not a live copy of the current Shop.
+
 ### Steam avatar frames
 
 The Shop's Steam category ships in `assets/steam-frames.json`, so it needs no setup. `bun scripts/steam-frames.mjs` refreshes it from Steam, and the CDN downloads each frame's art from Steam's CDN through `PUBLIC_FETCH_PROXY` the first time someone views it while `externalRequests.steamAssetFallback` is on, which is the default. See [steam-frames.md](../features/steam-frames.md).

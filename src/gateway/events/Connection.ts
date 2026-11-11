@@ -4,7 +4,7 @@ import { clientAddress } from "../util/ClientAddress";
 import { genSessionId, WebSocket } from "@spacebar/gateway";
 import { Send } from "../util/Send";
 import { CLOSECODES, OPCODES } from "../util/Constants";
-import { setHeartbeat } from "../util/Heartbeat";
+import { HEARTBEAT_INTERVAL_MS, setHeartbeat } from "../util/Heartbeat";
 import { IncomingMessage } from "node:http";
 import { Close } from "./Close";
 import { Message } from "./Message";
@@ -154,7 +154,7 @@ export async function Connection(this: WS.Server, socket: WebSocket, request: In
         await Send(socket, {
             op: OPCODES.Hello,
             d: {
-                heartbeat_interval: 1000 * 30,
+                heartbeat_interval: HEARTBEAT_INTERVAL_MS,
             },
         });
 
