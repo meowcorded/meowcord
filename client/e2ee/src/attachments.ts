@@ -52,19 +52,13 @@ const describe = async (file: Blob, type: string): Promise<Partial<Upload>> => {
         const src = URL.createObjectURL(file);
         const done = (value: Partial<Upload>) => {
             clearTimeout(timer);
-            media.onloadedmetadata = null;
-            media.onerror = null;
-            media.pause();
             media.removeAttribute("src");
-            media.load();
-            media.remove();
             URL.revokeObjectURL(src);
             resolve(value);
         };
         const timer = setTimeout(() => done({}), 5000);
         media.preload = "metadata";
         media.muted = true;
-        media.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
         media.onloadedmetadata = () => {
             const video = media instanceof HTMLVideoElement && media.videoWidth ? { width: media.videoWidth, height: media.videoHeight } : {};
             done({
@@ -73,9 +67,7 @@ const describe = async (file: Blob, type: string): Promise<Partial<Upload>> => {
             });
         };
         media.onerror = () => done({});
-        document.body.append(media);
         media.src = src;
-        media.load();
     });
 };
 
@@ -89,10 +81,7 @@ const renderPoster = (blob: Blob, type: string) =>
             clearTimeout(timer);
             video.onloadeddata = null;
             video.onerror = null;
-            video.pause();
             video.removeAttribute("src");
-            video.load();
-            video.remove();
             URL.revokeObjectURL(src);
             resolve(image);
         };
@@ -100,7 +89,6 @@ const renderPoster = (blob: Blob, type: string) =>
         video.muted = true;
         video.playsInline = true;
         video.preload = "auto";
-        video.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
         video.onloadeddata = () => {
             try {
                 const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
@@ -114,36 +102,14 @@ const renderPoster = (blob: Blob, type: string) =>
             }
         };
         video.onerror = () => done(null);
-        document.body.append(video);
         video.src = src;
-        video.load();
     });
-
-const POSTER_CONCURRENCY = 2;
 
 export const createAttachments = (canonicalOf?: (id: string) => string | undefined) => {
     const registry = new Map<string, FileEntry>();
     const uploads = new Map<string, Upload>();
     const names = new Map<string, string>();
     let controlled: Promise<boolean> = Promise.resolve(false);
-    const posterQueue: (() => void)[] = [];
-    let posterActive = 0;
-
-    const withPosterSlot = <T>(task: () => Promise<T>) =>
-        new Promise<T>((resolve, reject) => {
-            const start = () => {
-                posterActive++;
-                Promise.resolve()
-                    .then(task)
-                    .then(resolve, reject)
-                    .finally(() => {
-                        posterActive--;
-                        posterQueue.shift()?.();
-                    });
-            };
-            if (posterActive < POSTER_CONCURRENCY) start();
-            else posterQueue.push(start);
-        });
 
     const start = () => {
         const container = navigator.serviceWorker;
@@ -158,13 +124,11 @@ export const createAttachments = (canonicalOf?: (id: string) => string | undefin
             const port = event.ports[0];
             if (!port) return;
             if (data?.type === "fosscord-e2ee-file") port.postMessage(registry.get(String(data.path)) ?? null);
-            if (data?.type === "fosscord-e2ee-poster" && data.blob instanceof Blob) {
-                const blob = data.blob;
-                void withPosterSlot(() => renderPoster(blob, String(data.content_type))).then(
+            if (data?.type === "fosscord-e2ee-poster" && data.blob instanceof Blob)
+                renderPoster(data.blob, String(data.content_type)).then(
                     (image) => port.postMessage(image),
                     () => port.postMessage(null),
                 );
-            }
         });
         container.startMessages();
         controlled = new Promise((resolve) => {
