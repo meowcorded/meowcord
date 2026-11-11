@@ -219,12 +219,14 @@ ${final ? 1 : 0}`);
         media.pause();
         media.removeAttribute("src");
         media.load();
+        media.remove();
         URL.revokeObjectURL(src);
         resolve(value);
       };
       const timer = setTimeout(() => done({}), 5000);
       media.preload = "metadata";
       media.muted = true;
+      media.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
       media.onloadedmetadata = () => {
         const video = media instanceof HTMLVideoElement && media.videoWidth ? { width: media.videoWidth, height: media.videoHeight } : {};
         done({
@@ -233,7 +235,9 @@ ${final ? 1 : 0}`);
         });
       };
       media.onerror = () => done({});
+      document.body.append(media);
       media.src = src;
+      media.load();
     });
   };
   var POSTER_WIDTH = 1280;
@@ -247,6 +251,7 @@ ${final ? 1 : 0}`);
       video.pause();
       video.removeAttribute("src");
       video.load();
+      video.remove();
       URL.revokeObjectURL(src);
       resolve(image);
     };
@@ -254,6 +259,7 @@ ${final ? 1 : 0}`);
     video.muted = true;
     video.playsInline = true;
     video.preload = "auto";
+    video.style.cssText = "position:fixed;left:-10000px;top:0;width:1px;height:1px;opacity:0;pointer-events:none";
     video.onloadeddata = () => {
       try {
         const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
@@ -267,7 +273,9 @@ ${final ? 1 : 0}`);
       }
     };
     video.onerror = () => done(null);
+    document.body.append(video);
     video.src = src;
+    video.load();
   });
   var POSTER_CONCURRENCY = 2;
   var createAttachments = (canonicalOf) => {

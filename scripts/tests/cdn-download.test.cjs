@@ -206,6 +206,37 @@ test("actual attachment HTTP authorizes before storage, sanitizes HTML, supports
         await f.close();
     }
 });
+test("attachment reads support byte ranges for media playback", async () => {
+    const storage = {
+        openRead: async () => ({ size: 6, stream: Readable.from([Buffer.from("abcdef")]) }),
+    };
+    const f = await fixture(storage);
+    try {
+        const full = await fetch(`${f.origin}/1/2/clip.mp4`);
+        assert.equal(full.status, 200);
+        assert.equal(full.headers.get("accept-ranges"), "bytes");
+        assert.equal(full.headers.get("content-length"), "6");
+
+        const partial = await fetch(`${f.origin}/1/2/clip.mp4`, { headers: { range: "bytes=1-3" } });
+        assert.equal(partial.status, 206);
+        assert.equal(partial.headers.get("accept-ranges"), "bytes");
+        assert.equal(partial.headers.get("content-range"), "bytes 1-3/6");
+        assert.equal(partial.headers.get("content-length"), "3");
+        assert.equal(await partial.text(), "bcd");
+
+        const head = await fetch(`${f.origin}/1/2/clip.mp4`, { method: "HEAD", headers: { range: "bytes=2-" } });
+        assert.equal(head.status, 206);
+        assert.equal(head.headers.get("content-range"), "bytes 2-5/6");
+        assert.equal(await head.text(), "");
+
+        const invalid = await fetch(`${f.origin}/1/2/clip.mp4`, { headers: { range: "bytes=9-" } });
+        assert.equal(invalid.status, 416);
+        assert.equal(invalid.headers.get("content-range"), "bytes */6");
+    } finally {
+        await f.close();
+    }
+});
+
 test("a legacy attachment file only moves to the attachment whose filename it is", async () => {
     const files = new Map([["attachments/1/9/b.png", Buffer.from("bbb")]]);
     const moves = [];

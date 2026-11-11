@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Readable } from "node:stream";
 import { finished, pipeline } from "node:stream/promises";
 import { admitDownload, admitPreview, inspectDownload } from "../util/downloadAdmission";
 import { Request, Response, Router, raw, NextFunction } from "express";
@@ -30,6 +31,28 @@ const router = Router({ mergeParams: true });
 const slotWrites = new Map<string, Promise<void>>();
 
 const SANITIZED_CONTENT_TYPE = ["text/html", "text/mhtml", "multipart/related", "application/xhtml+xml"];
+
+const parseRange = (header: string | undefined, size: number) => {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? "");
+    if (!match || (!match[1] && !match[2])) return null;
+    const start = match[1] ? Number(match[1]) : Math.max(0, size - Number(match[2]));
+    const end = match[1] && match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start > end || start >= size) return "invalid" as const;
+    return { start, end };
+};
+
+async function* sliceStream(stream: Readable, start: number, end: number) {
+    let offset = 0;
+    for await (const chunk of stream) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        const chunkStart = offset;
+        const chunkEnd = offset + buffer.length - 1;
+        offset += buffer.length;
+        if (chunkEnd < start) continue;
+        if (chunkStart > end) break;
+        yield buffer.subarray(Math.max(0, start - chunkStart), Math.min(buffer.length, end - chunkStart + 1));
+    }
+}
 
 router.post(
     "/:channel_id/:message_id",
@@ -174,13 +197,27 @@ router.get("/:channel_id/:attachment_id/:filename", setCacheControl, async (req:
             else if (!guessed.startsWith("text/") && !guessed.startsWith("application/json")) res.set("Content-Type", "application/octet-stream");
         }
 
-        res.set("Content-Length", String(file.size));
+        const range = parseRange(req.headers.range, file.size);
+        if (range === "invalid") {
+            res.status(416).set("Content-Range", `bytes */${file.size}`).end();
+            await finished(res);
+            return;
+        }
+        res.set("Accept-Ranges", "bytes");
+        if (range) {
+            res.status(206).set({
+                "Content-Length": String(range.end - range.start + 1),
+                "Content-Range": `bytes ${range.start}-${range.end}/${file.size}`,
+            });
+        } else {
+            res.set("Content-Length", String(file.size));
+        }
         if (req.method === "HEAD") {
             res.end();
             await finished(res);
             return;
         }
-        await pipeline(inspected.stream, res, { signal: controller.signal });
+        await pipeline(range ? Readable.from(sliceStream(inspected.stream, range.start, range.end)) : inspected.stream, res, { signal: controller.signal });
     } catch (error) {
         if (!res.headersSent && !res.destroyed) throw error;
         if (!res.writableFinished) res.destroy();
