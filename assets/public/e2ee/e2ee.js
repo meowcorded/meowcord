@@ -238,20 +238,27 @@ ${final ? 1 : 0}`);
     const src = URL.createObjectURL(new Blob([blob], { type }));
     const done = (image) => {
       clearTimeout(timer);
+      video.onloadeddata = null;
+      video.onerror = null;
       video.removeAttribute("src");
       URL.revokeObjectURL(src);
       resolve(image);
     };
     const timer = setTimeout(() => done(null), 1e4);
     video.muted = true;
+    video.playsInline = true;
     video.preload = "auto";
     video.onloadeddata = () => {
-      const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-      canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(done, "image/jpeg", 0.85);
+      try {
+        const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(done, "image/jpeg", 0.85);
+      } catch {
+        done(null);
+      }
     };
     video.onerror = () => done(null);
     video.src = src;
@@ -590,45 +597,6 @@ ${final ? 1 : 0}`);
       this._api = await loadSubtleCrypto();
     }
   }
-  // node_modules/@hpke/common/esm/src/identifiers.js
-  var Mode = {
-    Base: 0,
-    Psk: 1,
-    Auth: 2,
-    AuthPsk: 3
-  };
-  var KemId = {
-    NotAssigned: 0,
-    DhkemP256HkdfSha256: 16,
-    DhkemP384HkdfSha384: 17,
-    DhkemP521HkdfSha512: 18,
-    DhkemSecp256k1HkdfSha256: 19,
-    DhkemX25519HkdfSha256: 32,
-    DhkemX448HkdfSha512: 33,
-    HybridkemX25519Kyber768: 48,
-    MlKem512: 64,
-    MlKem768: 65,
-    MlKem1024: 66,
-    XWing: 25722
-  };
-  var KdfId = {
-    HkdfSha256: 1,
-    HkdfSha384: 2,
-    HkdfSha512: 3,
-    Sha3256: 4,
-    Sha3384: 5,
-    Sha3512: 6,
-    Shake128: 16,
-    Shake256: 17,
-    TurboShake128: 18,
-    TurboShake256: 19
-  };
-  var AeadId = {
-    Aes128Gcm: 1,
-    Aes256Gcm: 2,
-    Chacha20Poly1305: 3,
-    ExportOnly: 65535
-  };
   // node_modules/@hpke/common/esm/src/consts.js
   var INPUT_LENGTH_LIMIT = 8192;
   var INFO_LENGTH_LIMIT = 268435456;
@@ -643,6 +611,54 @@ ${final ? 1 : 0}`);
     0,
     0
   ]);
+
+  // node_modules/@hpke/common/esm/src/utils/misc.js
+  var isCryptoKeyPair = (x) => typeof x === "object" && x !== null && typeof x.privateKey === "object" && typeof x.publicKey === "object";
+  function i2Osp(n, w) {
+    if (w <= 0) {
+      throw new Error("i2Osp: too small size");
+    }
+    if (n >= 256 ** w) {
+      throw new Error("i2Osp: too large integer");
+    }
+    const ret = new Uint8Array(w);
+    for (let i = 0;i < w && n; i++) {
+      ret[w - (i + 1)] = n % 256;
+      n = Math.floor(n / 256);
+    }
+    return ret;
+  }
+  function concat(...parts) {
+    let len = 0;
+    for (const p of parts)
+      len += p.length;
+    const ret = new Uint8Array(len);
+    let offset = 0;
+    for (const p of parts) {
+      ret.set(p, offset);
+      offset += p.length;
+    }
+    return ret;
+  }
+  function base64UrlToBytes(v) {
+    const base64 = v.replace(/-/g, "+").replace(/_/g, "/");
+    const byteString = atob(base64);
+    const ret = new Uint8Array(byteString.length);
+    for (let i = 0;i < byteString.length; i++) {
+      ret[i] = byteString.charCodeAt(i);
+    }
+    return ret;
+  }
+  function xor(a, b) {
+    if (a.byteLength !== b.byteLength) {
+      throw new Error("xor: different length inputs");
+    }
+    const buf = new Uint8Array(a.byteLength);
+    for (let i = 0;i < a.byteLength; i++) {
+      buf[i] = a[i] ^ b[i];
+    }
+    return buf;
+  }
 
   // node_modules/@hpke/common/esm/src/kdfs/hkdf.js
   var HPKE_VERSION = /* @__PURE__ */ new Uint8Array([
@@ -668,13 +684,13 @@ ${final ? 1 : 0}`);
   }
 
   class HkdfNative extends NativeAlgorithm {
-    constructor() {
+    constructor(fallbackExtract) {
       super();
       Object.defineProperty(this, "id", {
         enumerable: true,
         configurable: true,
         writable: true,
-        value: KdfId.HkdfSha256
+        value: 1
       });
       Object.defineProperty(this, "hashSize", {
         enumerable: true,
@@ -698,71 +714,60 @@ ${final ? 1 : 0}`);
           length: 256
         }
       });
+      Object.defineProperty(this, "_fallbackExtract", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      this._fallbackExtract = fallbackExtract;
     }
     init(suiteId) {
       this._suiteId = suiteId;
     }
     buildLabeledIkm(label, ikm) {
       this._checkInit();
-      const ret = new Uint8Array(7 + this._suiteId.byteLength + label.byteLength + ikm.byteLength);
-      ret.set(HPKE_VERSION, 0);
-      ret.set(this._suiteId, 7);
-      ret.set(label, 7 + this._suiteId.byteLength);
-      ret.set(ikm, 7 + this._suiteId.byteLength + label.byteLength);
-      return ret;
+      return concat(HPKE_VERSION, this._suiteId, label, ikm);
     }
     buildLabeledInfo(label, info, len) {
       this._checkInit();
-      const ret = new Uint8Array(9 + this._suiteId.byteLength + label.byteLength + info.byteLength);
-      ret.set(new Uint8Array([0, len]), 0);
-      ret.set(HPKE_VERSION, 2);
-      ret.set(this._suiteId, 9);
-      ret.set(label, 9 + this._suiteId.byteLength);
-      ret.set(info, 9 + this._suiteId.byteLength + label.byteLength);
-      return ret;
+      return concat(new Uint8Array([len >> 8, len]), HPKE_VERSION, this._suiteId, label, info);
     }
     async extract(salt, ikm) {
       await this._setup();
       const saltBuf = salt.byteLength === 0 ? new ArrayBuffer(this.hashSize) : toArrayBuffer(salt);
-      if (saltBuf.byteLength !== this.hashSize) {
-        throw new InvalidParamError("The salt length must be the same as the hashSize");
-      }
       const ikmBuf = toArrayBuffer(ikm);
-      const key = await this._api.importKey("raw", saltBuf, this.algHash, false, [
+      if (saltBuf.byteLength !== this.hashSize && this._fallbackExtract !== undefined) {
+        return this._fallbackExtract(new Uint8Array(saltBuf), new Uint8Array(ikmBuf)).buffer;
+      }
+      const key = await this._api.importKey("raw", saltBuf, { name: this.algHash.name, hash: this.algHash.hash }, false, [
         "sign"
       ]);
       return await this._api.sign("HMAC", key, ikmBuf);
     }
     async expand(prk, info, len) {
       await this._setup();
+      if (len > 255 * this.hashSize) {
+        throw new Error("Entropy limit reached");
+      }
       const prkBuf = toArrayBuffer(prk);
       const key = await this._api.importKey("raw", prkBuf, this.algHash, false, [
         "sign"
       ]);
-      const okm = new ArrayBuffer(len);
-      const okmBytes = new Uint8Array(okm);
+      const okm = new Uint8Array(len);
       let prev = EMPTY;
       const mid = toUint8Array(info);
-      const tail = new Uint8Array(1);
-      if (len > 255 * this.hashSize) {
-        throw new Error("Entropy limit reached");
+      for (let counter = 1, offset = 0;offset < okm.length; counter++) {
+        const input = new Uint8Array(prev.length + mid.length + 1);
+        input.set(prev);
+        input.set(mid, prev.length);
+        input[input.length - 1] = counter;
+        prev = new Uint8Array(await this._api.sign("HMAC", key, input));
+        const block = prev.subarray(0, Math.min(prev.length, okm.length - offset));
+        okm.set(block, offset);
+        offset += block.length;
       }
-      const tmp = new Uint8Array(this.hashSize + mid.length + 1);
-      for (let i = 1, cur = 0;cur < okmBytes.length; i++) {
-        tail[0] = i;
-        tmp.set(prev, 0);
-        tmp.set(mid, prev.length);
-        tmp.set(tail, prev.length + mid.length);
-        prev = new Uint8Array(await this._api.sign("HMAC", key, tmp.slice(0, prev.length + mid.length + 1)));
-        if (okmBytes.length - cur >= prev.length) {
-          okmBytes.set(prev, cur);
-          cur += prev.length;
-        } else {
-          okmBytes.set(prev.slice(0, okmBytes.length - cur), cur);
-          cur += okmBytes.length - cur;
-        }
-      }
-      return okm;
+      return okm.buffer;
     }
     async extractAndExpand(salt, ikm, info, len) {
       await this._setup();
@@ -795,7 +800,7 @@ ${final ? 1 : 0}`);
         enumerable: true,
         configurable: true,
         writable: true,
-        value: KdfId.HkdfSha256
+        value: 1
       });
       Object.defineProperty(this, "hashSize", {
         enumerable: true,
@@ -814,48 +819,6 @@ ${final ? 1 : 0}`);
         }
       });
     }
-  }
-
-  // node_modules/@hpke/common/esm/src/utils/misc.js
-  var isCryptoKeyPair = (x) => typeof x === "object" && x !== null && typeof x.privateKey === "object" && typeof x.publicKey === "object";
-  function i2Osp(n, w) {
-    if (w <= 0) {
-      throw new Error("i2Osp: too small size");
-    }
-    if (n >= 256 ** w) {
-      throw new Error("i2Osp: too large integer");
-    }
-    const ret = new Uint8Array(w);
-    for (let i = 0;i < w && n; i++) {
-      ret[w - (i + 1)] = n % 256;
-      n = Math.floor(n / 256);
-    }
-    return ret;
-  }
-  function concat(a, b) {
-    const ret = new Uint8Array(a.length + b.length);
-    ret.set(a, 0);
-    ret.set(b, a.length);
-    return ret;
-  }
-  function base64UrlToBytes(v) {
-    const base64 = v.replace(/-/g, "+").replace(/_/g, "/");
-    const byteString = atob(base64);
-    const ret = new Uint8Array(byteString.length);
-    for (let i = 0;i < byteString.length; i++) {
-      ret[i] = byteString.charCodeAt(i);
-    }
-    return ret;
-  }
-  function xor(a, b) {
-    if (a.byteLength !== b.byteLength) {
-      throw new Error("xor: different length inputs");
-    }
-    const buf = new Uint8Array(a.byteLength);
-    for (let i = 0;i < a.byteLength; i++) {
-      buf[i] = a[i] ^ b[i];
-    }
-    return buf;
   }
 
   // node_modules/@hpke/common/esm/src/kems/dhkem.js
@@ -883,13 +846,6 @@ ${final ? 1 : 0}`);
     101,
     116
   ]);
-  function concat3(a, b, c) {
-    const ret = new Uint8Array(a.length + b.length + c.length);
-    ret.set(a, 0);
-    ret.set(b, a.length);
-    ret.set(c, a.length + b.length);
-    return ret;
-  }
 
   class Dhkem {
     constructor(id, prim, kdf) {
@@ -978,24 +934,23 @@ ${final ? 1 : 0}`);
       }
       const enc = await this._prim.serializePublicKey(ke.publicKey);
       const pkrm = await this._prim.serializePublicKey(params.recipientPublicKey);
+      let dh = EMPTY;
+      let dh1 = EMPTY;
+      let dh2 = EMPTY;
       try {
-        let dh;
-        if (params.senderKey === undefined) {
-          dh = new Uint8Array(await this._prim.dh(ke.privateKey, params.recipientPublicKey));
-        } else {
+        dh1 = new Uint8Array(await this._prim.dh(ke.privateKey, params.recipientPublicKey));
+        dh = dh1;
+        let pksm = EMPTY;
+        if (params.senderKey !== undefined) {
           const sks = isCryptoKeyPair(params.senderKey) ? params.senderKey.privateKey : params.senderKey;
-          const dh1 = new Uint8Array(await this._prim.dh(ke.privateKey, params.recipientPublicKey));
-          const dh2 = new Uint8Array(await this._prim.dh(sks, params.recipientPublicKey));
+          dh2 = new Uint8Array(await this._prim.dh(sks, params.recipientPublicKey));
           dh = concat(dh1, dh2);
-        }
-        let kemContext;
-        if (params.senderKey === undefined) {
-          kemContext = concat(new Uint8Array(enc), new Uint8Array(pkrm));
-        } else {
+          dh1.fill(0);
+          dh2.fill(0);
           const pks = isCryptoKeyPair(params.senderKey) ? params.senderKey.publicKey : await this._prim.derivePublicKey(params.senderKey);
-          const pksm = await this._prim.serializePublicKey(pks);
-          kemContext = concat3(new Uint8Array(enc), new Uint8Array(pkrm), new Uint8Array(pksm));
+          pksm = new Uint8Array(await this._prim.serializePublicKey(pks));
         }
+        const kemContext = concat(new Uint8Array(enc), new Uint8Array(pkrm), pksm);
         const sharedSecret = await this._generateSharedSecret(dh, kemContext);
         return {
           enc,
@@ -1003,6 +958,10 @@ ${final ? 1 : 0}`);
         };
       } catch (e) {
         throw new EncapError(e);
+      } finally {
+        dh.fill(0);
+        dh1.fill(0);
+        dh2.fill(0);
       }
     }
     async decap(params) {
@@ -1011,34 +970,38 @@ ${final ? 1 : 0}`);
       const skr = isCryptoKeyPair(params.recipientKey) ? params.recipientKey.privateKey : params.recipientKey;
       const pkr = isCryptoKeyPair(params.recipientKey) ? params.recipientKey.publicKey : await this._prim.derivePublicKey(params.recipientKey);
       const pkrm = await this._prim.serializePublicKey(pkr);
+      let dh = EMPTY;
+      let dh1 = EMPTY;
+      let dh2 = EMPTY;
       try {
-        let dh;
-        if (params.senderPublicKey === undefined) {
-          dh = new Uint8Array(await this._prim.dh(skr, pke));
-        } else {
-          const dh1 = new Uint8Array(await this._prim.dh(skr, pke));
-          const dh2 = new Uint8Array(await this._prim.dh(skr, params.senderPublicKey));
+        dh1 = new Uint8Array(await this._prim.dh(skr, pke));
+        dh = dh1;
+        let pksm = EMPTY;
+        if (params.senderPublicKey !== undefined) {
+          dh2 = new Uint8Array(await this._prim.dh(skr, params.senderPublicKey));
           dh = concat(dh1, dh2);
+          dh1.fill(0);
+          dh2.fill(0);
+          pksm = new Uint8Array(await this._prim.serializePublicKey(params.senderPublicKey));
         }
-        let kemContext;
-        if (params.senderPublicKey === undefined) {
-          kemContext = concat(new Uint8Array(enc), new Uint8Array(pkrm));
-        } else {
-          const pksm = await this._prim.serializePublicKey(params.senderPublicKey);
-          kemContext = new Uint8Array(enc.byteLength + pkrm.byteLength + pksm.byteLength);
-          kemContext.set(new Uint8Array(enc), 0);
-          kemContext.set(new Uint8Array(pkrm), enc.byteLength);
-          kemContext.set(new Uint8Array(pksm), enc.byteLength + pkrm.byteLength);
-        }
+        const kemContext = concat(new Uint8Array(enc), new Uint8Array(pkrm), pksm);
         return await this._generateSharedSecret(dh, kemContext);
       } catch (e) {
         throw new DecapError(e);
+      } finally {
+        dh.fill(0);
+        dh1.fill(0);
+        dh2.fill(0);
       }
     }
     async _generateSharedSecret(dh, kemContext) {
       const labeledIkm = this._kdf.buildLabeledIkm(LABEL_EAE_PRK, dh);
-      const labeledInfo = this._kdf.buildLabeledInfo(LABEL_SHARED_SECRET, kemContext, this.secretSize);
-      return await this._kdf.extractAndExpand(EMPTY, labeledIkm, labeledInfo, this.secretSize);
+      try {
+        const labeledInfo = this._kdf.buildLabeledInfo(LABEL_SHARED_SECRET, kemContext, this.secretSize);
+        return await this._kdf.extractAndExpand(EMPTY, labeledIkm, labeledInfo, this.secretSize);
+      } finally {
+        labeledIkm.fill(0);
+      }
     }
   }
   // node_modules/@hpke/common/esm/src/interfaces/dhkemPrimitives.js
@@ -1053,6 +1016,238 @@ ${final ? 1 : 0}`);
     107
   ]);
   var LABEL_SK = /* @__PURE__ */ new Uint8Array([115, 107]);
+  // node_modules/@hpke/common/esm/src/kems/dhkemPrimitives/xCurveNative.js
+  var X_CURVE_X25519 = {
+    name: "X25519",
+    size: 32,
+    pkcs8AlgId: /* @__PURE__ */ new Uint8Array([
+      48,
+      46,
+      2,
+      1,
+      0,
+      48,
+      5,
+      6,
+      3,
+      43,
+      101,
+      110,
+      4,
+      34,
+      4,
+      32
+    ]),
+    basePoint: /* @__PURE__ */ (() => {
+      const p = new Uint8Array(32);
+      p[0] = 9;
+      return p;
+    })()
+  };
+  class XCurveNativeDhkemPrimitives extends NativeAlgorithm {
+    constructor(curve, hkdf) {
+      super();
+      Object.defineProperty(this, "_hkdf", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_alg", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_nPk", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_nSk", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_nDh", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_pkcs8AlgId", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_algName", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      Object.defineProperty(this, "_basePoint", {
+        enumerable: true,
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      this._algName = curve.name;
+      this._alg = { name: curve.name };
+      this._hkdf = hkdf;
+      this._nPk = curve.size;
+      this._nSk = curve.size;
+      this._nDh = curve.size;
+      this._pkcs8AlgId = curve.pkcs8AlgId;
+      this._basePoint = curve.basePoint;
+    }
+    async serializePublicKey(key) {
+      await this._setup();
+      try {
+        return await this._api.exportKey("raw", key);
+      } catch (e) {
+        throw new SerializeError(e);
+      }
+    }
+    async deserializePublicKey(key) {
+      await this._setup();
+      try {
+        return await this._importRawKey(toArrayBuffer(key), true);
+      } catch (e) {
+        throw new DeserializeError(e);
+      }
+    }
+    async serializePrivateKey(key) {
+      await this._setup();
+      try {
+        const jwk = await this._api.exportKey("jwk", key);
+        if (!("d" in jwk)) {
+          throw new Error("Not private key");
+        }
+        return base64UrlToBytes(jwk["d"]).buffer;
+      } catch (e) {
+        throw new SerializeError(e);
+      }
+    }
+    async deserializePrivateKey(key) {
+      await this._setup();
+      try {
+        return await this._importRawKey(toArrayBuffer(key), false);
+      } catch (e) {
+        throw new DeserializeError(e);
+      }
+    }
+    async importKey(format, key, isPublic) {
+      await this._setup();
+      try {
+        if (format === "raw") {
+          return await this._importRawKey(key, isPublic);
+        }
+        if (key instanceof ArrayBuffer) {
+          throw new Error("Invalid jwk key format");
+        }
+        return await this._importJWK(key, isPublic);
+      } catch (e) {
+        throw new DeserializeError(e);
+      }
+    }
+    async generateKeyPair() {
+      await this._setup();
+      try {
+        return await this._api.generateKey(this._algName, true, KEM_USAGES);
+      } catch (e) {
+        throw new NotSupportedError(e);
+      }
+    }
+    async deriveKeyPair(ikm) {
+      await this._setup();
+      try {
+        const rawIkm = toArrayBuffer(ikm);
+        const dkpPrk = await this._hkdf.labeledExtract(EMPTY, LABEL_DKP_PRK, new Uint8Array(rawIkm));
+        const rawSk = await this._hkdf.labeledExpand(dkpPrk, LABEL_SK, EMPTY, this._nSk);
+        const rawSkBytes = new Uint8Array(rawSk);
+        const sk = await this._deserializePkcs8Key(rawSkBytes);
+        rawSkBytes.fill(0);
+        return {
+          privateKey: sk,
+          publicKey: await this.derivePublicKey(sk)
+        };
+      } catch (e) {
+        throw new DeriveKeyPairError(e);
+      }
+    }
+    async derivePublicKey(key) {
+      await this._setup();
+      try {
+        const jwk = await this._api.exportKey("jwk", key);
+        delete jwk["d"];
+        delete jwk["key_ops"];
+        return await this._api.importKey("jwk", jwk, this._alg, true, []);
+      } catch {
+        try {
+          const bp = await this._api.importKey("raw", this._basePoint.buffer, this._alg, true, []);
+          const bits = await this._api.deriveBits({
+            name: this._algName,
+            public: bp
+          }, key, this._nPk * 8);
+          return await this._api.importKey("raw", bits, this._alg, true, []);
+        } catch (e) {
+          throw new DeserializeError(e);
+        }
+      }
+    }
+    async dh(sk, pk) {
+      await this._setup();
+      try {
+        const bits = await this._api.deriveBits({
+          name: this._algName,
+          public: pk
+        }, sk, this._nDh * 8);
+        return bits;
+      } catch (e) {
+        throw new SerializeError(e);
+      }
+    }
+    async _importRawKey(key, isPublic) {
+      if (isPublic && key.byteLength !== this._nPk) {
+        throw new Error("Invalid public key for the ciphersuite");
+      }
+      if (!isPublic && key.byteLength !== this._nSk) {
+        throw new Error("Invalid private key for the ciphersuite");
+      }
+      if (isPublic) {
+        return await this._api.importKey("raw", key, this._alg, true, []);
+      }
+      return await this._deserializePkcs8Key(new Uint8Array(key));
+    }
+    async _importJWK(key, isPublic) {
+      if (typeof key.kty === "undefined" || key.kty !== "OKP") {
+        throw new Error(`Invalid kty: ${key.crv}`);
+      }
+      if (typeof key.crv === "undefined" || key.crv !== this._algName) {
+        throw new Error(`Invalid crv: ${key.crv}`);
+      }
+      if (isPublic) {
+        if (typeof key.d !== "undefined") {
+          throw new Error("Invalid key: `d` should not be set");
+        }
+        return await this._api.importKey("jwk", key, this._alg, true, []);
+      }
+      if (typeof key.d === "undefined") {
+        throw new Error("Invalid key: `d` not found");
+      }
+      return await this._api.importKey("jwk", key, this._alg, true, KEM_USAGES);
+    }
+    async _deserializePkcs8Key(k) {
+      const pkcs8Key = new Uint8Array(this._pkcs8AlgId.length + k.length);
+      pkcs8Key.set(this._pkcs8AlgId, 0);
+      pkcs8Key.set(k, this._pkcs8AlgId.length);
+      return await this._api.importKey("pkcs8", pkcs8Key, this._alg, true, KEM_USAGES);
+    }
+  }
   // node_modules/@hpke/common/esm/src/interfaces/aeadEncryptionContext.js
   var AEAD_USAGES = ["encrypt", "decrypt"];
   // node_modules/@hpke/core/esm/src/aeads/aesGcm.js
@@ -1114,7 +1309,7 @@ ${final ? 1 : 0}`);
         enumerable: true,
         configurable: true,
         writable: true,
-        value: AeadId.Aes128Gcm
+        value: 1
       });
       Object.defineProperty(this, "keySize", {
         enumerable: true,
@@ -1147,7 +1342,7 @@ ${final ? 1 : 0}`);
         enumerable: true,
         configurable: true,
         writable: true,
-        value: AeadId.Aes256Gcm
+        value: 2
       });
       Object.defineProperty(this, "keySize", {
         enumerable: true,
@@ -1169,24 +1364,11 @@ ${final ? 1 : 0}`);
       });
     }
   }
-  // node_modules/@hpke/core/esm/src/utils/emitNotSupported.js
-  function emitNotSupported() {
-    return new Promise((_resolve, reject) => {
-      reject(new NotSupportedError("Not supported"));
-    });
-  }
-
   // node_modules/@hpke/core/esm/src/exporterContext.js
   var LABEL_SEC = new Uint8Array([115, 101, 99]);
 
   class ExporterContextImpl {
-    constructor(api, kdf, exporterSecret) {
-      Object.defineProperty(this, "_api", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
+    constructor(kdf, exporterSecret) {
       Object.defineProperty(this, "exporterSecret", {
         enumerable: true,
         configurable: true,
@@ -1199,15 +1381,14 @@ ${final ? 1 : 0}`);
         writable: true,
         value: undefined
       });
-      this._api = api;
       this._kdf = kdf;
       this.exporterSecret = exporterSecret;
     }
-    async seal(_data, _aad) {
-      return await emitNotSupported();
+    seal(_data, _aad) {
+      return Promise.reject(new NotSupportedError("Not supported"));
     }
-    async open(_data, _aad) {
-      return await emitNotSupported();
+    open(_data, _aad) {
+      return Promise.reject(new NotSupportedError("Not supported"));
     }
     async export(exporterContext, len) {
       const rawExporterContext = toArrayBuffer(exporterContext);
@@ -1226,8 +1407,8 @@ ${final ? 1 : 0}`);
   }
 
   class SenderExporterContextImpl extends ExporterContextImpl {
-    constructor(api, kdf, exporterSecret, enc) {
-      super(api, kdf, exporterSecret);
+    constructor(kdf, exporterSecret, enc) {
+      super(kdf, exporterSecret);
       Object.defineProperty(this, "enc", {
         enumerable: true,
         configurable: true,
@@ -1235,54 +1416,21 @@ ${final ? 1 : 0}`);
         value: undefined
       });
       this.enc = enc;
-      return;
     }
   }
 
   // node_modules/@hpke/core/esm/src/encryptionContext.js
   class EncryptionContextImpl extends ExporterContextImpl {
-    constructor(api, kdf, params) {
-      super(api, kdf, params.exporterSecret);
-      Object.defineProperty(this, "_aead", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nK", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nN", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nT", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
+    constructor(kdf, params) {
+      super(kdf, params.exporterSecret);
       Object.defineProperty(this, "_ctx", {
         enumerable: true,
         configurable: true,
         writable: true,
         value: undefined
       });
-      if (params.key === undefined || params.baseNonce === undefined || params.seq === undefined) {
-        throw new Error("Required parameters are missing");
-      }
-      this._aead = params.aead;
-      this._nK = this._aead.keySize;
-      this._nN = this._aead.nonceSize;
-      this._nT = this._aead.tagSize;
-      const key = this._aead.createEncryptionContext(params.key);
       this._ctx = {
-        key,
+        key: params.aead.createEncryptionContext(params.key),
         baseNonce: params.baseNonce,
         seq: params.seq
       };
@@ -1397,8 +1545,8 @@ ${final ? 1 : 0}`);
   var _SenderContextImpl_mutex;
 
   class SenderContextImpl extends EncryptionContextImpl {
-    constructor(api, kdf, params, enc) {
-      super(api, kdf, params);
+    constructor(kdf, params, enc) {
+      super(kdf, params);
       Object.defineProperty(this, "enc", {
         enumerable: true,
         configurable: true,
@@ -1424,6 +1572,13 @@ ${final ? 1 : 0}`);
     }
   }
   _SenderContextImpl_mutex = new WeakMap;
+
+  // node_modules/@hpke/core/esm/src/utils.js
+  function checkAuthSupport(kem) {
+    if ("auth" in kem && kem.auth === false) {
+      throw new NotSupportedError("Auth and AuthPSK modes are not supported by this KEM");
+    }
+  }
 
   // node_modules/@hpke/core/esm/src/cipherSuiteNative.js
   var LABEL_BASE_NONCE = new Uint8Array([
@@ -1533,27 +1688,23 @@ ${final ? 1 : 0}`);
       return this._aead;
     }
     async createSenderContext(params) {
+      if (params.senderKey !== undefined) {
+        checkAuthSupport(this._kem);
+      }
       this._validateInputLength(params);
       await this._setup();
       const dh = await this._kem.encap(params);
-      let mode;
-      if (params.psk !== undefined) {
-        mode = params.senderKey !== undefined ? Mode.AuthPsk : Mode.Psk;
-      } else {
-        mode = params.senderKey !== undefined ? Mode.Auth : Mode.Base;
-      }
+      const mode = (params.psk !== undefined ? 1 : 0) | (params.senderKey !== undefined ? 2 : 0);
       return await this._keyScheduleS(mode, dh.sharedSecret, dh.enc, params);
     }
     async createRecipientContext(params) {
+      if (params.senderPublicKey !== undefined) {
+        checkAuthSupport(this._kem);
+      }
       this._validateInputLength(params);
       await this._setup();
       const sharedSecret = await this._kem.decap(params);
-      let mode;
-      if (params.psk !== undefined) {
-        mode = params.senderPublicKey !== undefined ? Mode.AuthPsk : Mode.Psk;
-      } else {
-        mode = params.senderPublicKey !== undefined ? Mode.Auth : Mode.Base;
-      }
+      const mode = (params.psk !== undefined ? 1 : 0) | (params.senderPublicKey !== undefined ? 2 : 0);
       return await this._keyScheduleR(mode, sharedSecret, params);
     }
     async seal(params, pt, aad = EMPTY.buffer) {
@@ -1572,15 +1723,12 @@ ${final ? 1 : 0}`);
       const pskIdHash = await this._kdf.labeledExtract(EMPTY, LABEL_PSK_ID_HASH, pskId);
       const info = params.info === undefined ? EMPTY : toUint8Array(params.info);
       const infoHash = await this._kdf.labeledExtract(EMPTY, LABEL_INFO_HASH, info);
-      const keyScheduleContext = new Uint8Array(1 + pskIdHash.byteLength + infoHash.byteLength);
-      keyScheduleContext.set(new Uint8Array([mode]), 0);
-      keyScheduleContext.set(new Uint8Array(pskIdHash), 1);
-      keyScheduleContext.set(new Uint8Array(infoHash), 1 + pskIdHash.byteLength);
+      const keyScheduleContext = concat(new Uint8Array([mode]), new Uint8Array(pskIdHash), new Uint8Array(infoHash));
       const psk = params.psk === undefined ? EMPTY : toUint8Array(params.psk.key);
       const ikm = this._kdf.buildLabeledIkm(LABEL_SECRET, psk);
       const exporterSecretInfo = this._kdf.buildLabeledInfo(LABEL_EXP, keyScheduleContext, this._kdf.hashSize);
       const exporterSecret = await this._kdf.extractAndExpand(sharedSecret, ikm, exporterSecretInfo, this._kdf.hashSize);
-      if (this._aead.id === AeadId.ExportOnly) {
+      if (this._aead.id === 65535) {
         return { aead: this._aead, exporterSecret };
       }
       const keyInfo = this._kdf.buildLabeledInfo(LABEL_KEY, keyScheduleContext, this._aead.keySize);
@@ -1598,16 +1746,16 @@ ${final ? 1 : 0}`);
     async _keyScheduleS(mode, sharedSecret, enc, params) {
       const res = await this._keySchedule(mode, sharedSecret, params);
       if (res.key === undefined) {
-        return new SenderExporterContextImpl(this._api, this._kdf, res.exporterSecret, enc);
+        return new SenderExporterContextImpl(this._kdf, res.exporterSecret, enc);
       }
-      return new SenderContextImpl(this._api, this._kdf, res, enc);
+      return new SenderContextImpl(this._kdf, res, enc);
     }
     async _keyScheduleR(mode, sharedSecret, params) {
       const res = await this._keySchedule(mode, sharedSecret, params);
       if (res.key === undefined) {
-        return new RecipientExporterContextImpl(this._api, this._kdf, res.exporterSecret);
+        return new RecipientExporterContextImpl(this._kdf, res.exporterSecret);
       }
-      return new RecipientContextImpl(this._api, this._kdf, res);
+      return new RecipientContextImpl(this._kdf, res);
     }
     _validateInputLength(params) {
       if (params.info !== undefined && params.info.byteLength > INFO_LENGTH_LIMIT) {
@@ -1633,233 +1781,16 @@ ${final ? 1 : 0}`);
   }
   class HkdfSha256 extends HkdfSha256Native {
   }
-  // node_modules/@hpke/core/esm/src/kems/dhkemPrimitives/x25519.js
-  var ALG_NAME = "X25519";
-  var PKCS8_ALG_ID_X25519 = new Uint8Array([
-    48,
-    46,
-    2,
-    1,
-    0,
-    48,
-    5,
-    6,
-    3,
-    43,
-    101,
-    110,
-    4,
-    34,
-    4,
-    32
-  ]);
-  var BASE_POINT_X25519 = /* @__PURE__ */ (() => {
-    const p = new Uint8Array(32);
-    p[0] = 9;
-    return p;
-  })();
-
-  class X25519 extends NativeAlgorithm {
-    constructor(hkdf) {
-      super();
-      Object.defineProperty(this, "_hkdf", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_alg", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nPk", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nSk", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_nDh", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      Object.defineProperty(this, "_pkcs8AlgId", {
-        enumerable: true,
-        configurable: true,
-        writable: true,
-        value: undefined
-      });
-      this._alg = { name: ALG_NAME };
-      this._hkdf = hkdf;
-      this._nPk = 32;
-      this._nSk = 32;
-      this._nDh = 32;
-      this._pkcs8AlgId = PKCS8_ALG_ID_X25519;
-    }
-    async serializePublicKey(key) {
-      await this._setup();
-      try {
-        return await this._api.exportKey("raw", key);
-      } catch (e) {
-        throw new SerializeError(e);
-      }
-    }
-    async deserializePublicKey(key) {
-      await this._setup();
-      try {
-        return await this._importRawKey(toArrayBuffer(key), true);
-      } catch (e) {
-        throw new DeserializeError(e);
-      }
-    }
-    async serializePrivateKey(key) {
-      await this._setup();
-      try {
-        const jwk = await this._api.exportKey("jwk", key);
-        if (!("d" in jwk)) {
-          throw new Error("Not private key");
-        }
-        return base64UrlToBytes(jwk["d"]).buffer;
-      } catch (e) {
-        throw new SerializeError(e);
-      }
-    }
-    async deserializePrivateKey(key) {
-      await this._setup();
-      try {
-        return await this._importRawKey(toArrayBuffer(key), false);
-      } catch (e) {
-        throw new DeserializeError(e);
-      }
-    }
-    async importKey(format, key, isPublic) {
-      await this._setup();
-      try {
-        if (format === "raw") {
-          return await this._importRawKey(key, isPublic);
-        }
-        if (key instanceof ArrayBuffer) {
-          throw new Error("Invalid jwk key format");
-        }
-        return await this._importJWK(key, isPublic);
-      } catch (e) {
-        throw new DeserializeError(e);
-      }
-    }
-    async generateKeyPair() {
-      await this._setup();
-      try {
-        return await this._api.generateKey(ALG_NAME, true, KEM_USAGES);
-      } catch (e) {
-        throw new NotSupportedError(e);
-      }
-    }
-    async deriveKeyPair(ikm) {
-      await this._setup();
-      try {
-        const rawIkm = toArrayBuffer(ikm);
-        const dkpPrk = await this._hkdf.labeledExtract(EMPTY, LABEL_DKP_PRK, new Uint8Array(rawIkm));
-        const rawSk = await this._hkdf.labeledExpand(dkpPrk, LABEL_SK, EMPTY, this._nSk);
-        const rawSkBytes = new Uint8Array(rawSk);
-        const sk = await this._deserializePkcs8Key(rawSkBytes);
-        rawSkBytes.fill(0);
-        return {
-          privateKey: sk,
-          publicKey: await this.derivePublicKey(sk)
-        };
-      } catch (e) {
-        throw new DeriveKeyPairError(e);
-      }
-    }
-    async derivePublicKey(key) {
-      await this._setup();
-      try {
-        const jwk = await this._api.exportKey("jwk", key);
-        delete jwk["d"];
-        delete jwk["key_ops"];
-        return await this._api.importKey("jwk", jwk, this._alg, true, []);
-      } catch {
-        try {
-          const bp = await this._api.importKey("raw", BASE_POINT_X25519.buffer, this._alg, true, []);
-          const bits = await this._api.deriveBits({
-            name: ALG_NAME,
-            public: bp
-          }, key, this._nPk * 8);
-          return await this._api.importKey("raw", bits, this._alg, true, []);
-        } catch (e) {
-          throw new DeserializeError(e);
-        }
-      }
-    }
-    async dh(sk, pk) {
-      await this._setup();
-      try {
-        const bits = await this._api.deriveBits({
-          name: ALG_NAME,
-          public: pk
-        }, sk, this._nDh * 8);
-        return bits;
-      } catch (e) {
-        throw new SerializeError(e);
-      }
-    }
-    async _importRawKey(key, isPublic) {
-      if (isPublic && key.byteLength !== this._nPk) {
-        throw new Error("Invalid public key for the ciphersuite");
-      }
-      if (!isPublic && key.byteLength !== this._nSk) {
-        throw new Error("Invalid private key for the ciphersuite");
-      }
-      if (isPublic) {
-        return await this._api.importKey("raw", key, this._alg, true, []);
-      }
-      return await this._deserializePkcs8Key(new Uint8Array(key));
-    }
-    async _importJWK(key, isPublic) {
-      if (typeof key.kty === "undefined" || key.kty !== "OKP") {
-        throw new Error(`Invalid kty: ${key.crv}`);
-      }
-      if (typeof key.crv === "undefined" || key.crv !== ALG_NAME) {
-        throw new Error(`Invalid crv: ${key.crv}`);
-      }
-      if (isPublic) {
-        if (typeof key.d !== "undefined") {
-          throw new Error("Invalid key: `d` should not be set");
-        }
-        return await this._api.importKey("jwk", key, this._alg, true, []);
-      }
-      if (typeof key.d === "undefined") {
-        throw new Error("Invalid key: `d` not found");
-      }
-      return await this._api.importKey("jwk", key, this._alg, true, KEM_USAGES);
-    }
-    async _deserializePkcs8Key(k) {
-      const pkcs8Key = new Uint8Array(this._pkcs8AlgId.length + k.length);
-      pkcs8Key.set(this._pkcs8AlgId, 0);
-      pkcs8Key.set(k, this._pkcs8AlgId.length);
-      return await this._api.importKey("pkcs8", pkcs8Key, this._alg, true, KEM_USAGES);
-    }
-  }
-
   // node_modules/@hpke/core/esm/src/kems/dhkemX25519.js
   class DhkemX25519HkdfSha256 extends Dhkem {
     constructor() {
       const kdf = new HkdfSha256Native;
-      super(KemId.DhkemX25519HkdfSha256, new X25519(kdf), kdf);
+      super(32, new XCurveNativeDhkemPrimitives(X_CURVE_X25519, kdf), kdf);
       Object.defineProperty(this, "id", {
         enumerable: true,
         configurable: true,
         writable: true,
-        value: KemId.DhkemX25519HkdfSha256
+        value: 32
       });
       Object.defineProperty(this, "secretSize", {
         enumerable: true,
@@ -1931,7 +1862,7 @@ ${final ? 1 : 0}`);
     privateKey: await subtle().importKey("jwk", { ...jwk, key_ops: ["deriveBits"] }, { name: "X25519" }, false, ["deriveBits"]),
     publicKey: await subtle().importKey("raw", fromB64u(jwk.x), { name: "X25519" }, true, [])
   });
-  var x25519 = async (privateKey, publicKey) => {
+  var x255192 = async (privateKey, publicKey) => {
     const peer = await subtle().importKey("raw", fromB64u(publicKey), { name: "X25519" }, false, []);
     return new Uint8Array(await subtle().deriveBits({ name: "X25519", public: peer }, privateKey, 256));
   };
@@ -2041,20 +1972,20 @@ ${publicKey}`;
   function hexCharCodesToInt(a, b) {
     return (a & 15) + (a >> 6 | a >> 3 & 8) << 4 | (b & 15) + (b >> 6 | b >> 3 & 8);
   }
-  function writeHexToUInt8(buf, str2) {
-    const size = str2.length >> 1;
+  function writeHexToUInt8(buf, str) {
+    const size = str.length >> 1;
     for (let i = 0;i < size; i++) {
       const index = i << 1;
-      buf[i] = hexCharCodesToInt(str2.charCodeAt(index), str2.charCodeAt(index + 1));
+      buf[i] = hexCharCodesToInt(str.charCodeAt(index), str.charCodeAt(index + 1));
     }
   }
-  function hexStringEqualsUInt8(str2, buf) {
-    if (str2.length !== buf.length * 2) {
+  function hexStringEqualsUInt8(str, buf) {
+    if (str.length !== buf.length * 2) {
       return false;
     }
     for (let i = 0;i < buf.length; i++) {
       const strIndex = i << 1;
-      if (buf[i] !== hexCharCodesToInt(str2.charCodeAt(strIndex), str2.charCodeAt(strIndex + 1))) {
+      if (buf[i] !== hexCharCodesToInt(str.charCodeAt(strIndex), str.charCodeAt(strIndex + 1))) {
         return false;
       }
     }
@@ -2189,7 +2120,7 @@ ${publicKey}`;
       const loadWASMPromise = wasmMutex.dispatch(() => __awaiter(this, undefined, undefined, function* () {
         if (!wasmModuleCache.has(binary.name)) {
           const asm = decodeBase64(binary.data);
-          const promise = WebAssembly.compile(asm);
+          const promise = WebAssembly.compile(asm.buffer);
           wasmModuleCache.set(binary.name, promise);
         }
         const module = yield wasmModuleCache.get(binary.name);
@@ -2321,16 +2252,16 @@ ${publicKey}`;
   }
   var mutex$l = new Mutex2;
   var name$k = "argon2";
-  var data$k = "AGFzbQEAAAABKQVgAX8Bf2AAAX9gEH9/f39/f39/f39/f39/f38AYAR/f39/AGACf38AAwYFAAECAwQFBgEBAoCAAgYIAX8BQZCoBAsHQQQGbWVtb3J5AgASSGFzaF9TZXRNZW1vcnlTaXplAAAOSGFzaF9HZXRCdWZmZXIAAQ5IYXNoX0NhbGN1bGF0ZQAECvEyBVgBAn9BACEBAkAgAEEAKAKICCICRg0AAkAgACACayIAQRB2IABBgIB8cSAASWoiAEAAQX9HDQBB/wHADwtBACEBQQBBACkDiAggAEEQdK18NwOICAsgAcALcAECfwJAQQAoAoAIIgANAEEAPwBBEHQiADYCgAhBACgCiAgiAUGAgCBGDQACQEGAgCAgAWsiAEEQdiAAQYCAfHEgAElqIgBAAEF/Rw0AQQAPC0EAQQApA4gIIABBEHStfDcDiAhBACgCgAghAAsgAAvcDgECfiAAIAQpAwAiECAAKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAMIBAgDCkDAIVCIIkiEDcDACAIIBAgCCkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgBCAQIAQpAwCFQiiJIhA3AwAgACAQIAApAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAwgECAMKQMAhUIwiSIQNwMAIAggECAIKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAEIBAgBCkDAIVCAYk3AwAgASAFKQMAIhAgASkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDSAQIA0pAwCFQiCJIhA3AwAgCSAQIAkpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAUgECAFKQMAhUIoiSIQNwMAIAEgECABKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACANIBAgDSkDAIVCMIkiEDcDACAJIBAgCSkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBSAQIAUpAwCFQgGJNwMAIAIgBikDACIQIAIpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIA4gECAOKQMAhUIgiSIQNwMAIAogECAKKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAGIBAgBikDAIVCKIkiEDcDACACIBAgAikDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgDiAQIA4pAwCFQjCJIhA3AwAgCiAQIAopAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAYgECAGKQMAhUIBiTcDACADIAcpAwAiECADKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAPIBAgDykDAIVCIIkiEDcDACALIBAgCykDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgByAQIAcpAwCFQiiJIhA3AwAgAyAQIAMpAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIA8gECAPKQMAhUIwiSIQNwMAIAsgECALKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAHIBAgBykDAIVCAYk3AwAgACAFKQMAIhAgACkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDyAQIA8pAwCFQiCJIhA3AwAgCiAQIAopAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAUgECAFKQMAhUIoiSIQNwMAIAAgECAAKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAPIBAgDykDAIVCMIkiEDcDACAKIBAgCikDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBSAQIAUpAwCFQgGJNwMAIAEgBikDACIQIAEpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAwgECAMKQMAhUIgiSIQNwMAIAsgECALKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAGIBAgBikDAIVCKIkiEDcDACABIBAgASkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgDCAQIAwpAwCFQjCJIhA3AwAgCyAQIAspAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAYgECAGKQMAhUIBiTcDACACIAcpAwAiECACKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACANIBAgDSkDAIVCIIkiEDcDACAIIBAgCCkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgByAQIAcpAwCFQiiJIhA3AwAgAiAQIAIpAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIA0gECANKQMAhUIwiSIQNwMAIAggECAIKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAHIBAgBykDAIVCAYk3AwAgAyAEKQMAIhAgAykDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDiAQIA4pAwCFQiCJIhA3AwAgCSAQIAkpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAQgECAEKQMAhUIoiSIQNwMAIAMgECADKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAOIBAgDikDAIVCMIkiEDcDACAJIBAgCSkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBCAQIAQpAwCFQgGJNwMAC98aAQN/QQAhBEEAIAIpAwAgASkDAIU3A5AIQQAgAikDCCABKQMIhTcDmAhBACACKQMQIAEpAxCFNwOgCEEAIAIpAxggASkDGIU3A6gIQQAgAikDICABKQMghTcDsAhBACACKQMoIAEpAyiFNwO4CEEAIAIpAzAgASkDMIU3A8AIQQAgAikDOCABKQM4hTcDyAhBACACKQNAIAEpA0CFNwPQCEEAIAIpA0ggASkDSIU3A9gIQQAgAikDUCABKQNQhTcD4AhBACACKQNYIAEpA1iFNwPoCEEAIAIpA2AgASkDYIU3A/AIQQAgAikDaCABKQNohTcD+AhBACACKQNwIAEpA3CFNwOACUEAIAIpA3ggASkDeIU3A4gJQQAgAikDgAEgASkDgAGFNwOQCUEAIAIpA4gBIAEpA4gBhTcDmAlBACACKQOQASABKQOQAYU3A6AJQQAgAikDmAEgASkDmAGFNwOoCUEAIAIpA6ABIAEpA6ABhTcDsAlBACACKQOoASABKQOoAYU3A7gJQQAgAikDsAEgASkDsAGFNwPACUEAIAIpA7gBIAEpA7gBhTcDyAlBACACKQPAASABKQPAAYU3A9AJQQAgAikDyAEgASkD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";
-  var hash$k = "e4cdc523";
+  var data$k = "AGFzbQEAAAABKQVgAX8Bf2AAAX9gEH9/f39/f39/f39/f39/f38AYAR/f39/AGACf38AAwYFAAECAwQFBgEBAoCAAgYIAX8BQYCABAsHUwUGbWVtb3J5AgAPX19zdGFja19wb2ludGVyAwASSGFzaF9TZXRNZW1vcnlTaXplAAAOSGFzaF9HZXRCdWZmZXIAAQ5IYXNoX0NhbGN1bGF0ZQAECsc2BV0DAX8BfgF/QQAhAQJAIABBACkDiIAEIgKnIgNGDQBBACEBAkAgACADayIAQRB2IABB//8DcUEAR2oiAEAAQX9HDQBB/wHADwtBACACIABBEHStfDcDiIAECyABwAt0AwJ/AX4BfwJAQQAoAoCABCIADQBBAD8AQRB0IgE2AoCABAJAQQApA4iABCICpyIDQYCAIEYNAEEAIQBBgIAgIANrIgNBEHYgA0H//wNxQQBHaiIDQABBf0YNAUEAIAIgA0EQdK18NwOIgAQLIAEhAAsgAAvcDgECfiAAIAQpAwAiECAAKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAMIBAgDCkDAIVCIIkiEDcDACAIIBAgCCkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgBCAQIAQpAwCFQiiJIhA3AwAgACAQIAApAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAwgECAMKQMAhUIwiSIQNwMAIAggECAIKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAEIBAgBCkDAIVCAYk3AwAgASAFKQMAIhAgASkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDSAQIA0pAwCFQiCJIhA3AwAgCSAQIAkpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAUgECAFKQMAhUIoiSIQNwMAIAEgECABKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACANIBAgDSkDAIVCMIkiEDcDACAJIBAgCSkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBSAQIAUpAwCFQgGJNwMAIAIgBikDACIQIAIpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIA4gECAOKQMAhUIgiSIQNwMAIAogECAKKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAGIBAgBikDAIVCKIkiEDcDACACIBAgAikDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgDiAQIA4pAwCFQjCJIhA3AwAgCiAQIAopAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAYgECAGKQMAhUIBiTcDACADIAcpAwAiECADKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAPIBAgDykDAIVCIIkiEDcDACALIBAgCykDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgByAQIAcpAwCFQiiJIhA3AwAgAyAQIAMpAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIA8gECAPKQMAhUIwiSIQNwMAIAsgECALKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAHIBAgBykDAIVCAYk3AwAgACAFKQMAIhAgACkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDyAQIA8pAwCFQiCJIhA3AwAgCiAQIAopAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAUgECAFKQMAhUIoiSIQNwMAIAAgECAAKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAPIBAgDykDAIVCMIkiEDcDACAKIBAgCikDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBSAQIAUpAwCFQgGJNwMAIAEgBikDACIQIAEpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAwgECAMKQMAhUIgiSIQNwMAIAsgECALKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACAGIBAgBikDAIVCKIkiEDcDACABIBAgASkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgDCAQIAwpAwCFQjCJIhA3AwAgCyAQIAspAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIAYgECAGKQMAhUIBiTcDACACIAcpAwAiECACKQMAIhF8IBFCAYZC/v///x+DIBBC/////w+DfnwiEDcDACANIBAgDSkDAIVCIIkiEDcDACAIIBAgCCkDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgByAQIAcpAwCFQiiJIhA3AwAgAiAQIAIpAwAiEXwgEEL/////D4MgEUIBhkL+////H4N+fCIQNwMAIA0gECANKQMAhUIwiSIQNwMAIAggECAIKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAHIBAgBykDAIVCAYk3AwAgAyAEKQMAIhAgAykDACIRfCARQgGGQv7///8fgyAQQv////8Pg358IhA3AwAgDiAQIA4pAwCFQiCJIhA3AwAgCSAQIAkpAwAiEXwgEUIBhkL+////H4MgEEL/////D4N+fCIQNwMAIAQgECAEKQMAhUIoiSIQNwMAIAMgECADKQMAIhF8IBBC/////w+DIBFCAYZC/v///x+DfnwiEDcDACAOIBAgDikDAIVCMIkiEDcDACAJIBAgCSkDACIRfCAQQv////8PgyARQgGGQv7///8fg358IhA3AwAgBCAQIAQpAwCFQgGJNwMAC+MdAQN/QQAhBEEAIAIpAwAgASkDAIU3A5CABEEAIAIpAwggASkDCIU3A5iABEEAIAIpAxAgASkDEIU3A6CABEEAIAIpAxggASkDGIU3A6iABEEAIAIpAyAgASkDIIU3A7CABEEAIAIpAyggASkDKIU3A7iABEEAIAIpAzAgASkDMIU3A8CABEEAIAIpAzggASkDOIU3A8iABEEAIAIpA0AgASkDQIU3A9CABEEAIAIpA0ggASkDSIU3A9iABEEAIAIpA1AgASkDUIU3A+CABEEAIAIpA1ggASkDWIU3A+iABEEAIAIpA2AgASkDYIU3A/CABEEAIAIpA2ggASkDaIU3A/iABEEAIAIpA3AgASkDcIU3A4CBBEEAIAIpA3ggASkDeIU3A4iBBEEAIAIpA4ABIAEpA4ABhTcDkIEEQQAgAikDiAEgASkDiAGFNwOYgQRBACACKQOQASABKQOQAYU3A6CBBEEAIAIpA5gBIAEpA5gBhTcDqIEEQQAgAikDoAEgASkDoAGFNwOwgQRBACACKQOoASABKQOoAYU3A7iBBEEAIAIpA7ABIAEpA7ABhTcDwIEEQQAgAikDuAEgASkDuAGFNwPIgQRBACACKQPAASABKQPAAYU3A9CBBEEAIAIpA8gBIAEpA8gBhTcD2IEEQQAgAikD0AEgASkD0AGFNwPggQRBACACKQPYASABKQPYAYU3A+iBBEEAIAIpA+ABIAEpA+ABhTcD8IEEQQAgAikD6AEgASkD6AGFNwP4gQRBACACKQPwASABKQPwAYU3A4CCBEEAIAIpA/gBIAEpA/gBhTcDiIIEQQAgAikDgAIgASkDgAKFNwOQggRBACACKQOIAiABKQOIAoU3A5iCBEEAIAIpA5ACIAEpA5AChTcDoIIEQQAgAikDmAIgASkDmAKFNwOoggRBACACKQOgAiABKQOgAoU3A7CCBEEAIAIpA6gCIAEpA6gChTcDuIIEQQAgAikDsAIgASkDsAKFNwPAggRBACACKQO4AiABKQO4AoU3A8iCBEEAIAIpA8ACIAEpA8AChTcD0IIEQQAgAikDyAIgASkDyAKFNwPYggRBACACKQPQAiABKQPQAoU3A+CCBEEAIAIpA9gCIAEpA9gChTcD6IIEQQAgAikD4AIgASkD4AKFNwPwggRBACACKQPoAiABKQPoAoU3A/iCBEEAIAIpA/ACIAEpA/AChTcDgIMEQQAgAikD+AIgASkD+AKFNwOIgwRBACACKQOAAyABKQOAA4U3A5CDBEEAIAIpA4gDIAEpA4gDhTcDmIMEQQAgAikDkAMgASkDkAOFNwOggwRBACACKQOYAyABKQOYA4U3A6iDBEEAIAIpA6ADIAEpA6ADhTcDsIMEQQAgAikDqAMgASkDqAOFNwO4gwRBACACKQOwAyABKQOwA4U3A8CDBEEAIAIpA7gDIAEpA7gDhTcDyIMEQQAgAikDwAMgASkDwAOFNwPQgwRBACACKQPIAyABKQPIA4U3A9iDBEEAIAIpA9ADIAEpA9ADhTcD4IMEQQAgAikD2AMgASkD2AOFNwPogwRBACACKQPgAyABKQPgA4U3A/CDBEEAIAIpA+gDIAEpA+gDhTcD+IMEQQAgAikD8AMgASkD8AOFNwOAhARBACACKQP4AyABKQP4A4U3A4iEBEEAIAIpA4AEIAEpA4AEhTcDkIQEQQAgAikDiAQgASkDiASFNwOYhARBACACKQOQBCABKQOQBIU3A6CEBEEAIAIpA5gEIAEpA5gEhTcDqIQEQQAgAikDoAQgASkDoASFNwOwhARBACACKQOoBCABKQOoBIU3A7iEBEEAIAIpA7AEIAEpA7AEhTcDwIQEQQAgAikDuAQgASkDuASFNwPIhARBACACKQPABCABKQPABIU3A9CEBEEAIAIpA8gEIAEpA8gEhTcD2IQEQQAgAikD0AQgASkD0ASFNwPghARBACACKQPYBCABKQPYBIU3A+iEBEEAIAIpA+AEIAEpA+AEhTcD8IQEQQAgAikD6AQgASkD6ASFNwP4hARBACACKQPwBCABKQPwBIU3A4CFBEEAIAIpA/gEIAEpA/gEhTcDiIUEQQAgAikDgAUgASkDgAWFNwOQhQRBACACKQOIBSABKQOIBYU3A5iFBEEAIAIpA5AFIAEpA5AFhTcDoIUEQQAgAikDmAUgASkDmAWFNwOohQRBACACKQOgBSABKQOgBYU3A7CFBEEAIAIpA6gFIAEpA6gFhTcDuIUEQQAgAikDsAUgASkDsAWFNwPAhQRBACACKQO4BSABKQO4BYU3A8iFBEEAIAIpA8AFIAEpA8AFhTcD0IUEQQAgAikDyAUgASkDyAWFNwPYhQRBACACKQPQBSABKQPQBYU3A+CFBEEAIAIpA9gFIAEpA9gFhTcD6IUEQQAgAikD4AUgASkD4AWFNwPwhQRBACACKQPoBSABKQPoBYU3A/iFBEEAIAIpA/AFIAEpA/AFhTcDgIYEQQAgAikD+AUgASkD+AWFNwOIhgRBACACKQOABiABKQOABoU3A5CGBEEAIAIpA4gGIAEpA4gGhTcDmIYEQQAgAikDkAYgASkDkAaFNwOghgRBACACKQOYBiABKQOYBoU3A6iGBEEAIAIpA6AGIAEpA6AGhTcDsIYEQQAgAikDqAYgASkDqAaFNwO4hgRBACACKQOwBiABKQOwBoU3A8CGBEEAIAIpA7gGIAEpA7gGhTcDyIYEQQAgAikDwAYgASkDwAaFNwPQhgRBACACKQPIBiABKQPIBoU3A9iGBEEAIAIpA9AGIAEpA9AGhTcD4IYEQQAgAikD2AYgASkD2AaFNwPohgRBACACKQPgBiABKQPgBoU3A/CGBEEAIAIpA+gGIAEpA+gGhTcD+IYEQQAgAikD8AYgASkD8AaFNwOAhwRBACACKQP4BiABKQP4BoU3A4iHBEEAIAIpA4AHIAEpA4AHhTcDkIcEQQAgAikDiAcgASkDiAeFNwOYhwRBACACKQOQByABKQOQB4U3A6CHBEEAIAIpA5gHIAEpA5gHhTcDqIcEQQAgAikDoAcgASkDoAeFNwOwhwRBACACKQOoByABKQOoB4U3A7iHBEEAIAIpA7AHIAEpA7AHhTcDwIcEQQAgAikDuAcgASkDuAeFNwPIhwRBACACKQPAByABKQPAB4U3A9CHBEEAIAIpA8gHIAEpA8gHhTcD2IcEQQAgAikD0AcgASkD0AeFNwPghwRBACACKQPYByABKQPYB4U3A+iHBEEAIAIpA+AHIAEpA+AHhTcD8IcEQQAgAikD6AcgASkD6AeFNwP4hwRBACACKQPwByABKQPwB4U3A4CIBEEAIAIpA/gHIAEpA/gHhTcDiIgEQZCABEGYgARBoIAEQaiABEGwgARBuIAEQcCABEHIgARB0IAEQdiABEHggARB6IAEQfCABEH4gARBgIEEQYiBBBACQZCBBEGYgQRBoIEEQaiBBEGwgQRBuIEEQcCBBEHIgQRB0IEEQdiBBEHggQRB6IEEQfCBBEH4gQRBgIIEQYiCBBACQZCCBEGYggRBoIIEQaiCBEGwggRBuIIEQcCCBEHIggRB0IIEQdiCBEHgggRB6IIEQfCCBEH4ggRBgIMEQYiDBBACQZCDBEGYgwRBoIMEQaiDBEGwgwRBuIMEQcCDBEHIgwRB0IMEQdiDBEHggwRB6IMEQfCDBEH4gwRBgIQEQYiEBBACQZCEBEGYhARBoIQEQaiEBEGwhARBuIQEQcCEBEHIhARB0IQEQdiEBEHghARB6IQEQfCEBEH4hARBgIUEQYiFBBACQZCFBEGYhQRBoIUEQaiFBEGwhQRBuIUEQcCFBEHIhQRB0IUEQdiFBEHghQRB6IUEQfCFBEH4hQRBgIYEQYiGBBACQZCGBEGYhgRBoIYEQaiGBEGwhgRBuIYEQcCGBEHIhgRB0IYEQdiGBEHghgRB6IYEQfCGBEH4hgRBgIcEQYiHBBACQZCHBEGYhwRBoIcEQaiHBEGwhwRBuIcEQcCHBEHIhwRB0IcEQdiHBEHghwRB6IcEQfCHBEH4hwRBgIgEQYiIBBACQZCABEGYgARBkIEEQZiBBEGQggRBmIIEQZCDBEGYgwRBkIQEQZiEBEGQhQRBmIUEQZCGBEGYhgRBkIcEQZiHBBACQaCABEGogARBoIEEQaiBBEGgggRBqIIEQaCDBEGogwRBoIQEQaiEBEGghQRBqIUEQaCGBEGohgRBoIcEQaiHBBACQbCABEG4gARBsIEEQbiBBEGwggRBuIIEQbCDBEG4gwRBsIQEQbiEBEGwhQRBuIUEQbCGBEG4hgRBsIcEQbiHBBACQcCABEHIgARBwIEEQciBBEHAggRByIIEQcCDBEHIgwRBwIQEQciEBEHAhQRByIUEQcCGBEHIhgRBwIcEQciHBBACQdCABEHYgARB0IEEQdiBBEHQggRB2IIEQdCDBEHYgwRB0IQEQdiEBEHQhQRB2IUEQdCGBEHYhgRB0IcEQdiHBBACQeCABEHogARB4IEEQeiBBEHgggRB6IIEQeCDBEHogwRB4IQEQeiEBEHghQRB6IUEQeCGBEHohgRB4IcEQeiHBBACQfCABEH4gARB8IEEQfiBBEHwggRB+IIEQfCDBEH4gwRB8IQEQfiEBEHwhQRB+IUEQfCGBEH4hgRB8IcEQfiHBBACQYCBBEGIgQRBgIIEQYiCBEGAgwRBiIMEQYCEBEGIhARBgIUEQYiFBEGAhgRBiIYEQYCHBEGIhwRBgIgEQYiIBBACAkACQCADRQ0AA0AgACAEaiIDIAIgBGoiBSkDACABIARqIgYpAwCFIARBkIAEaikDAIUgAykDAIU3AwAgA0EIaiIDIAVBCGopAwAgBkEIaikDAIUgBEGYgARqKQMAhSADKQMAhTcDACAEQRBqIgRBgAhHDQAMAgsLQQAhBANAIAAgBGoiAyACIARqIgUpAwAgASAEaiIGKQMAhSAEQZCABGopAwCFNwMAIANBCGogBUEIaikDACAGQQhqKQMAhSAEQZiABGopAwCFNwMAIARBEGoiBEGACEcNAAsLC64IDAV/AX4EfwJ+An8BfgN/AX4GfwF+A38BfgJAQQAoAoCABCICIAFBCnRqIgMoAgggAUcNACADKAIMIQQgAygCACEFQQAgAygCFCIGrTcDuIgEQQAgBK0iBzcDsIgEQQAgBSABIAVBAnRuIghsIglBAnStNwOoiAQCQAJAAkACQCAERQ0AQX8hCiAFRQ0BIAhBA2whCyAIQQJ0IgStIQwgBa0hDSAGQQJGIQ4gBkF/akECSSEPQgAhEANAQQAgEDcDkIgEIA4gEFAiEXEhEiAQpyETQgAhFEEAIQEDQEEAIBQ3A6CIBCAGQQFGIBIgFEICVHFyIRUgECAUhFAiAyAPcSEWQQJBACADGyEXQX8gAUEBakEDcSAIbEF/aiARGyEYIAEgE3IhGSABIAhsIRpCACEbA0BBAEIANwPAiARBACAbNwOYiAQgFyEBAkAgFkUNAEEAQgE3A8CIBEGQkARBkIgEQZCYBEEAEANBkJAEQZCQBEGQmARBABADQQIhAQsCQCABIAhPDQAgBCAbpyIKbCAaaiABaiEDA0AgA0EAIAQgARtBACAUUCIcG2pBf2ohHQJAAkAgFQ0AIAIgHUEKdCIdaiEeDAELAkAgAUH/AHEiHg0AQQBBACkDwIgEQgF8NwPAiARBkJAEQZCIBEGQmARBABADQZCQBEGQkARBkJgEQQAQAwsgHUEKdCEdIB5BA3RBkJAEaiEeCyACIANBCnRqIAIgHWogAiAeKQMAIh9CIIinIAVwIAogGRsiHSAEbCABIAFBACAbIB2tUSIdGyIeIBwbIBpqIB4gC2ogERsgAUUgHXJrIhwgGGqtIB9C/////w+DIh8gH35CIIggHK1+QiCIfSAMgqdqQQp0akEBEAMgA0EBaiEDIAFBAWoiASAISQ0ACwsgG0IBfCIbIA1SDQALIBRCAXwiFKchASAUQgRSDQALIBBCAXwiECAHUg0ACwsgCUEMdEGAeGohFSAFQX9qIgpFDQIMAQtBAEIDNwOgiARBACAEQX9qrTcDkIgEQYB4IRULIAIgFWohGiAIQQx0IRFBACEIA0AgAiARIAhBAWoiCGxqQYB4aiEeQXghBEEAIRwDQCAaIARqIgFBCGoiAyADKQMAIB4gHGoiAykDAIU3AwAgAUEQaiIdIB0pAwAgA0EIaikDAIU3AwAgAUEYaiIdIB0pAwAgA0EQaikDAIU3AwAgAUEgaiIBIAEpAwAgA0EYaikDAIU3AwAgHEEgaiEcIARBIGoiBEH4B0kNAAsgCCAKRw0ACwsgAiAVaiEcQXghAQNAIAIgAWoiA0EIaiAcIAFqIgRBCGopAwA3AwAgBEEQaikDACEfIARBGGopAwAhGyADQSBqIARBIGopAwA3AwAgA0EYaiAbNwMAIANBEGogHzcDACABQSBqIgFB+AdJDQALCws=";
+  var hash$k = "2b50b0d6";
   var wasmJson$k = {
     name: name$k,
     data: data$k,
     hash: hash$k
   };
   var name$j = "blake2b";
-  var data$j = "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";
-  var hash$j = "c6f286e6";
+  var data$j = "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";
+  var hash$j = "22cf500a";
   var wasmJson$j = {
     name: name$j,
     data: data$j,
@@ -2450,14 +2381,14 @@ ${publicKey}`;
   }
   function argon2Internal(options) {
     return __awaiter(this, undefined, undefined, function* () {
-      var _a2;
+      var _a;
       const { parallelism, iterations, hashLength } = options;
       const password = getUInt8Buffer(options.password);
       const salt = getUInt8Buffer(options.salt);
       const version = 19;
       const hashType = getHashType(options.hashType);
       const { memorySize } = options;
-      const secret = getUInt8Buffer((_a2 = options.secret) !== null && _a2 !== undefined ? _a2 : "");
+      const secret = getUInt8Buffer((_a = options.secret) !== null && _a !== undefined ? _a : "");
       const [argon2Interface, blake512] = yield Promise.all([
         WASMInterface(wasmJson$k, 1024),
         createBLAKE2b(512)
@@ -2511,7 +2442,7 @@ ${publicKey}`;
     });
   }
   var validateOptions$3 = (options) => {
-    var _a2;
+    var _a;
     if (!options || typeof options !== "object") {
       throw new Error("Invalid options parameter. It requires an object.");
     }
@@ -2529,7 +2460,7 @@ ${publicKey}`;
     if (options.salt.length < 8) {
       throw new Error("Salt should be at least 8 bytes long");
     }
-    options.secret = getUInt8Buffer((_a2 = options.secret) !== null && _a2 !== undefined ? _a2 : "");
+    options.secret = getUInt8Buffer((_a = options.secret) !== null && _a !== undefined ? _a : "");
     if (!Number.isInteger(options.iterations) || options.iterations < 1) {
       throw new Error("Iterations should be a positive number");
     }
@@ -3914,9 +3845,9 @@ ${sig}`;
       await this.refresh();
     }
     serialized(task) {
-      const run2 = this.queue.then(task);
-      this.queue = run2.then(() => {}, () => {});
-      return run2;
+      const run = this.queue.then(task);
+      this.queue = run.then(() => {}, () => {});
+      return run;
     }
     exclusive(task) {
       return navigator.locks ? navigator.locks.request(`fosscord-e2ee-keys:${this.userId}`, task) : task();
@@ -3999,7 +3930,7 @@ ${sig}`;
         throw new Error("backup identity private key doesn't match");
       const pair = await importAgreementJwk(backupJwk);
       const probe = await generateAgreementKey();
-      if (!sameBytes(await x25519(pair.privateKey, await exportPublic(probe.publicKey)), await x25519(probe.privateKey, backup.backup_public_key)))
+      if (!sameBytes(await x255192(pair.privateKey, await exportPublic(probe.publicKey)), await x255192(probe.privateKey, backup.backup_public_key)))
         throw new Error("backup private key doesn't match");
       await this.adoptIdentity(identityJwk);
       this.backupKeyPair = { publicKey: backupJwk.x, keyPair: pair };
@@ -4205,10 +4136,10 @@ ${digest}`;
         this.secret = null;
         this.backupKeyPair = null;
       } else if (!this.backup && !state.channels.length && this.identity?.publicKey !== state.identity_key && this.passwordValue()) {
-        const password2 = this.passwordValue();
+        const password = this.passwordValue();
         identityJwk = await generateExportable("Ed25519");
         state = await this.api.request("post", "/users/@me/e2ee/reset", {
-          password: password2,
+          password,
           public_key: identityJwk.x
         });
         await this.wipeLocal(false);
@@ -4831,7 +4762,7 @@ ${digest}`;
           throw new E2eeError("NO_DEVICES", "This browser has no encryption keys yet", entry.userId);
         active.forEach((device) => targets.push({ userId: entry.userId, device }));
       }
-      if (!targets.some((t2) => t2.device.deviceId === this.device.deviceId)) {
+      if (!targets.some((t) => t.device.deviceId === this.device.deviceId)) {
         const current = this.currentPrekey();
         targets.push({
           userId: this.userId,
@@ -5094,6 +5025,60 @@ backup:${ownId}`).catch(() => null);
     }
   }
 
+  // client/e2ee/src/search.ts
+  var values = (value) => value == null ? [] : (Array.isArray(value) ? value : [value]).map(String);
+  function readSearchQuery(params) {
+    const list = (key) => [...params].filter(([name]) => name === key || name.startsWith(`${key}[`) && /^\[\d*\]$/.test(name.slice(key.length))).map(([, value]) => value);
+    return {
+      content: params.get("content") ?? undefined,
+      author_id: list("author_id"),
+      has: list("has"),
+      offset: params.get("offset") ?? undefined,
+      limit: params.get("limit") ?? undefined,
+      sort_order: params.get("sort_order") ?? undefined
+    };
+  }
+  function matchesSearch(message, query) {
+    const text = String(message.content ?? "").toLowerCase();
+    const words = String(query.content ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+    const authors = values(query.author_id);
+    if (!words.every((word) => text.includes(word)) || authors.length && !authors.includes(String(message.author?.id)))
+      return false;
+    const embeds = message.embeds ?? [];
+    const media = (prefix) => message.attachments?.some((attachment) => String(attachment.content_type ?? "").toLowerCase().startsWith(prefix)) ?? false;
+    const has = {
+      link: /https?:\/\//i.test(text),
+      embed: embeds.length > 0,
+      file: !!message.attachments?.length,
+      image: media("image/") || embeds.some((embed) => embed.type === "image" || embed.type === "gifv" || !!embed.image),
+      video: media("video/") || embeds.some((embed) => embed.type === "video" || !!embed.video),
+      sound: media("audio/"),
+      sticker: !!message.sticker_items?.length
+    };
+    const filters = values(query.has);
+    const wanted = filters.filter((filter) => !filter.startsWith("-"));
+    return (!wanted.length || wanted.some((filter) => has[filter] === true)) && filters.filter((filter) => filter.startsWith("-")).every((filter) => !has[filter.slice(1)]);
+  }
+
+  // client/e2ee/src/network.ts
+  class EncryptionNetworkError extends Error {
+    cause;
+    constructor(cause) {
+      super("Encryption couldn't reach the server", { cause });
+      this.cause = cause;
+    }
+  }
+  var requestFailure = (error) => {
+    const status = error?.status;
+    return typeof status === "number" && status > 0 ? error : new EncryptionNetworkError(error);
+  };
+  var isTransientRequestError = (error) => {
+    if (error instanceof EncryptionNetworkError)
+      return true;
+    const status = error?.status;
+    return typeof status === "number" && (status === 0 || status === 408 || status === 429 || status >= 500);
+  };
+
   // client/e2ee/src/hooks.ts
   var DECRYPTING_CONTENT = "Decrypting…";
   var MISSING_CONTENT = "Sent before this browser was set up";
@@ -5133,7 +5118,8 @@ backup:${ownId}`).catch(() => null);
   var createHooks = (ctx) => {
     const { engine, states } = ctx;
     const inflight = new Map;
-    const retry = new Map;
+    const retry = new BoundedMap(256);
+    let retryTimer = null;
     const readable = new BoundedMap(READABLE_CHANNELS);
     const searched = new Map;
     const payloads = new BoundedMap(PLAINTEXT_CACHE_SIZE);
@@ -5251,11 +5237,20 @@ backup:${ownId}`).catch(() => null);
             remember(message);
             previews(message);
           } catch (error) {
+            const transient = isTransientRequestError(error);
             const code = error instanceof E2eeError ? error.code : null;
             const state = code === "LOCKED" ? "locked" : code === "NO_KEY" ? "missing" : code === "RESET" ? "reset" : "failed";
             states.set(message.id, { state, reason: errorText(error) });
-            if (state === "locked" || state === "missing")
+            if (transient || state === "locked" || state === "missing")
               retry.set(message.id, original);
+            if (transient && !retryTimer) {
+              const retryAfter = Number(error?.body?.retry_after);
+              const delay = Number.isFinite(retryAfter) ? Math.max(30000, retryAfter * 1000 + 1000) : 30000;
+              retryTimer = setTimeout(() => {
+                retryTimer = null;
+                retryAll();
+              }, Math.min(delay, 2147483647));
+            }
             message.content = contentFor(state, undefined, engine.trustsServer);
           }
         })().finally(() => inflight.delete(key));
@@ -5382,12 +5377,7 @@ backup:${ownId}`).catch(() => null);
       }
       const all = [...readable.get(channelId)?.values() ?? []].filter((m) => states.get(m.id)?.state === "decrypted").sort((a, b) => BigInt(b.id) > BigInt(a.id) ? 1 : -1);
       return queries.map((query) => {
-        const words = String(query.content ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-        const authors = [query.author_id ?? []].flat().map(String);
-        const hits = all.filter((m) => {
-          const text = String(m.content ?? "").toLowerCase();
-          return words.every((w) => text.includes(w)) && (!authors.length || authors.includes(String(m.author?.id)));
-        });
+        const hits = all.filter((message) => matchesSearch(message, query));
         if (query.sort_order === "asc")
           hits.reverse();
         const offset = Number(query.offset ?? 0) || 0;
@@ -5478,13 +5468,7 @@ backup:${ownId}`).catch(() => null);
                 new URLSearchParams(extra).forEach((value, name) => params.append(name, value));
               else if (extra && typeof extra === "object")
                 Object.entries(extra).forEach(([name, value]) => [value].flat().forEach((v) => v != null && params.append(name, String(v))));
-              const query = {
-                content: params.get("content") ?? undefined,
-                author_id: params.getAll("author_id"),
-                offset: params.get("offset") ?? undefined,
-                limit: params.get("limit") ?? undefined,
-                sort_order: params.get("sort_order") ?? undefined
-              };
+              const query = readSearchQuery(params);
               const named = tabs ? Object.entries((opts.body ?? {}).tabs ?? {}) : [];
               const results = await searchLocally(originals, channelId, tabs ? named.map(([, q]) => q) : [query]);
               const body = tabs ? {
@@ -5617,7 +5601,7 @@ ${approver}`));
     const digits = String(value % 1e6).padStart(6, "0");
     return `${digits.slice(0, 3)} ${digits.slice(3)}`;
   };
-  var channelKey = async (pair, peer, requestId) => hkdf(await x25519(pair.privateKey, peer), utf8(requestId), "fosscord-e2ee/v1/link");
+  var channelKey = async (pair, peer, requestId) => hkdf(await x255192(pair.privateKey, peer), utf8(requestId), "fosscord-e2ee/v1/link");
   var channelAad = (requestId, requester, approver) => `fosscord-e2ee/v1/link
 ${requestId}
 ${requester}
@@ -6298,13 +6282,13 @@ ${approver}`;
       el.addEventListener("blur", hideTooltip);
       el.addEventListener("click", hideTooltip);
     };
-    const button = (label, variant, run2) => {
+    const button = (label, variant, run) => {
       const el = document.createElement("button");
       el.type = "button";
       el.className = "fe2ee-button";
       el.dataset.variant = variant;
       el.textContent = label;
-      el.addEventListener("click", run2);
+      el.addEventListener("click", run);
       return el;
     };
     addEventListener("keydown", (event) => {
@@ -6407,7 +6391,7 @@ ${approver}`;
       el.innerHTML = `<h3>${escape(title)}</h3>${text ? `<p>${escape(text)}</p>` : ""}`;
       return el;
     };
-    const describe2 = (el, text) => {
+    const describe = (el, text) => {
       const p = document.createElement("p");
       p.textContent = text;
       el.append(p);
@@ -6470,12 +6454,12 @@ ${approver}`;
         try {
           await enableChannel(channelId);
           close();
-        } catch (failure2) {
-          const body2 = failure2?.body;
-          if (body2?.message === "E2EE_RECIPIENT_NO_DEVICES")
-            return void await notReady(Array.isArray(body2.user_ids) ? body2.user_ids.map(String) : []);
+        } catch (failure) {
+          const body = failure?.body;
+          if (body?.message === "E2EE_RECIPIENT_NO_DEVICES")
+            return void await notReady(Array.isArray(body.user_ids) ? body.user_ids.map(String) : []);
           error.textContent = t("Couldn't turn on encryption. {error}", {
-            error: errorText(failure2)
+            error: errorText(failure)
           });
           error.hidden = false;
           confirm.disabled = false;
@@ -6531,9 +6515,9 @@ ${approver}`;
       });
     };
     const showReset = (onDone) => dialog(t("Reset encryption?"), (body, actions, { close }) => {
-      describe2(body, engine.linked ? t("This replaces your encryption keys. Only do this if you think someone else got hold of them.") : engine.backup?.mode === "recovery" ? t("Only do this if you lost your recovery code and no other signed-in browser can approve this one.") : t("Only do this if your password doesn't unlock your keys and no other signed-in browser can approve this one."));
-      describe2(body, t("You get new keys and can keep chatting, but none of your browsers can read the messages sent before the reset anymore. The people you talk to keep what they received."));
-      describe2(body, t("Your other browsers have to be approved again, and the people you talk to are told that your safety number changed."));
+      describe(body, engine.linked ? t("This replaces your encryption keys. Only do this if you think someone else got hold of them.") : engine.backup?.mode === "recovery" ? t("Only do this if you lost your recovery code and no other signed-in browser can approve this one.") : t("Only do this if your password doesn't unlock your keys and no other signed-in browser can approve this one."));
+      describe(body, t("You get new keys and can keep chatting, but none of your browsers can read the messages sent before the reset anymore. The people you talk to keep what they received."));
+      describe(body, t("Your other browsers have to be approved again, and the people you talk to are told that your safety number changed."));
       const { wrap, input, setError } = field(t("Account password"), "password", "current-password");
       body.append(wrap);
       const confirm = button(t("Reset encryption"), "danger", async () => {
@@ -6589,7 +6573,7 @@ ${approver}`;
       dialog(t("Enter your password"), (body, actions, { el, close, setDismissable }) => {
         setDismissable(false);
         el.dataset.requiredPassword = "true";
-        describe2(body, t("Enter your account password to finish setting up this browser."));
+        describe(body, t("Enter your account password to finish setting up this browser."));
         const { wrap, input, setError } = field(t("Account password"), "password", "current-password");
         input.required = true;
         body.append(wrap);
@@ -6666,7 +6650,7 @@ ${approver}`;
         link.request().catch(() => {});
       dialog(t("Unlock encrypted messages"), (body, actions, { el, close }) => {
         const backup = engine.backup;
-        const intro = describe2(body, t("This browser can't read your encrypted messages yet. Bring your keys over with one of these."));
+        const intro = describe(body, t("This browser can't read your encrypted messages yet. Bring your keys over with one of these."));
         if (!backup || backup.mode === "password" && !backup.wrapped_secret) {
           const own = section(t("Enter your password"), t("If your keys aren't backed up with your password yet, open the app on a browser you used before. It asks for your password once, and then it works here too."));
           own.append(unlockForm("password"));
@@ -6685,7 +6669,7 @@ ${approver}`;
         approval.append(status, codes, again);
         body.append(approval);
         const lost = section(backup?.mode === "recovery" ? t("Lost your code?") : t("Can't unlock this browser?"));
-        describe2(lost, t("If you can't use any of these, reset encryption to keep chatting. Messages sent before the reset can't be read anymore."));
+        describe(lost, t("If you can't use any of these, reset encryption to keep chatting. Messages sent before the reset can't be read anymore."));
         lost.append(button(t("Reset encryption"), "link", () => showReset(done)));
         body.append(lost);
         const render = () => {
@@ -6704,8 +6688,8 @@ ${approver}`;
             name: approvers[0]?.name ?? t("Your other browser")
           }) : state?.state === "denied" ? t("This login was denied on your other browser, so this browser was signed out.") : state?.state === "failed" ? state.error ? t("The approval didn't unlock this browser. {error}", { error: state.error }) : t("The approval didn't unlock this browser. Ask again to retry.") : state?.state === "waiting" ? t("Open the app on a browser where you're already signed in. It asks you to approve this one.") : t("Ask a browser where you're already signed in to approve this one.");
           const denied = state?.state === "denied";
-          for (const el2 of [intro, ...body.querySelectorAll(":scope > .fe2ee-section")])
-            el2.hidden = denied && el2 !== approval;
+          for (const el of [intro, ...body.querySelectorAll(":scope > .fe2ee-section")])
+            el.hidden = denied && el !== approval;
           notNow.textContent = denied ? t("Close") : t("Not now");
           if (engine.linked) {
             done();
@@ -6751,22 +6735,22 @@ ${approver}`;
         };
         approvals.set(prompt.requestId, finish);
         el.addEventListener("close", () => approvals.delete(prompt.requestId));
-        const run2 = async (action) => {
+        const run = async (action) => {
           approve.disabled = deny.disabled = true;
           error.hidden = true;
           try {
             await action();
             finish();
-          } catch (failure2) {
+          } catch (failure) {
             error.textContent = t("Couldn't answer that login. {error}", {
-              error: errorText(failure2)
+              error: errorText(failure)
             });
             error.hidden = false;
             approve.disabled = deny.disabled = false;
           }
         };
-        const approve = button(t("Approve login"), "primary", () => run2(prompt.approve));
-        const deny = button(t("Deny"), "secondary", () => run2(prompt.deny));
+        const approve = button(t("Approve login"), "primary", () => run(prompt.approve));
+        const deny = button(t("Deny"), "secondary", () => run(prompt.deny));
         actions.append(deny, approve);
         return el;
       });
@@ -6795,7 +6779,7 @@ ${approver}`;
       return wrap;
     };
     const showBackupPassword = () => dialog(t("Back up your encryption keys"), (body, actions, { close }) => {
-      describe2(body, t("Your encryption keys only exist in this browser right now. Enter your account password to lock a backup of them with it, so any browser you sign in to can read your encrypted messages."));
+      describe(body, t("Your encryption keys only exist in this browser right now. Enter your account password to lock a backup of them with it, so any browser you sign in to can read your encrypted messages."));
       body.append(backupPasswordForm(() => {
         close();
         const channelId = currentChannel();
@@ -6805,7 +6789,7 @@ ${approver}`;
       actions.append(button(t("Not now"), "secondary", close));
     });
     const showRecoveryCode = () => dialog(t("Use a recovery code"), (body, actions, { close, setDismissable }) => {
-      const intro = describe2(body, t("We'll make a code that locks your key backup instead of your password. You'll need it to set up a new browser when no other device is around to approve it. We only show it once."));
+      const intro = describe(body, t("We'll make a code that locks your key backup instead of your password. You'll need it to set up a new browser when no other device is around to approve it. We only show it once."));
       const code = generateRecoveryCode();
       const create = button(t("Make recovery code"), "primary", () => {
         setDismissable(false);
@@ -6837,9 +6821,9 @@ ${approver}`;
           try {
             await engine.setBackupMode("recovery", code);
             close();
-          } catch (failure2) {
+          } catch (failure) {
             error.textContent = t("Couldn't switch to the recovery code. {error}", {
-              error: errorText(failure2)
+              error: errorText(failure)
             });
             error.hidden = false;
             saved.disabled = false;
@@ -6859,7 +6843,7 @@ ${approver}`;
       return { current, text: [state, session?.location, added].filter(Boolean).join(" · ") };
     };
     const confirmRemove = (device, onDone) => dialog(t("Remove this device?"), (body, actions, { close }) => {
-      describe2(body, t("{name} is signed out and can't read new encrypted messages. To read them there again, it needs your recovery code, your password, or approval from another device.", { name: deviceTitle(device) ?? t("This browser") }));
+      describe(body, t("{name} is signed out and can't read new encrypted messages. To read them there again, it needs your recovery code, your password, or approval from another device.", { name: deviceTitle(device) ?? t("This browser") }));
       const error = document.createElement("p");
       error.className = "fe2ee-error";
       error.setAttribute("role", "alert");
@@ -6871,8 +6855,8 @@ ${approver}`;
           await engine.removeDevice(device.device_id);
           close();
           onDone();
-        } catch (failure2) {
-          error.textContent = t("Couldn't remove it. {error}", { error: errorText(failure2) });
+        } catch (failure) {
+          error.textContent = t("Couldn't remove it. {error}", { error: errorText(failure) });
           error.hidden = false;
           confirm.disabled = false;
         }
@@ -6884,7 +6868,7 @@ ${approver}`;
       const backupSection = section(t("Key backup"));
       const devices = section(t("Your devices"), t("Unlocked browsers can read your encrypted messages, and browsers waiting for approval can once you approve them. Remove the ones you don't recognize or don't use anymore."));
       const resetSection = section(t("Reset encryption"));
-      const resetText = describe2(resetSection, "");
+      const resetText = describe(resetSection, "");
       const list = document.createElement("div");
       list.className = "fe2ee-devices";
       const inviteError = document.createElement("p");
@@ -6914,12 +6898,12 @@ ${approver}`;
       });
       strictLabel.append(strict, document.createTextNode(t("Review safety number changes and new browser approvals")));
       advanced.append(strictLabel);
-      describe2(advanced, t("By default, this browser trusts this instance's signed-in sessions and key directory. The instance also stores an encrypted recovery copy of your backup secret, so your account password can recover this browser. Safety checks apply in this browser and do not erase a recovery copy already stored by another browser."));
+      describe(advanced, t("By default, this browser trusts this instance's signed-in sessions and key directory. The instance also stores an encrypted recovery copy of your backup secret, so your account password can recover this browser. Safety checks apply in this browser and do not erase a recovery copy already stored by another browser."));
       root.append(browser, backupSection, devices, resetSection, advanced);
       const clear = (el) => el.querySelectorAll(":scope > :not(h3)").forEach((child) => child.remove());
       const renderBrowser = () => {
         clear(browser);
-        describe2(browser, engine.linked ? t("Unlocked. This browser can read and send encrypted messages.") : t("Locked. This browser can't read encrypted messages yet."));
+        describe(browser, engine.linked ? t("Unlocked. This browser can read and send encrypted messages.") : t("Locked. This browser can't read encrypted messages yet."));
         if (!engine.linked)
           browser.append(button(t("Unlock this browser"), "primary", () => {
             close?.();
@@ -6936,18 +6920,18 @@ ${approver}`;
         clear(backupSection);
         backupSection.dataset.mode = backup?.mode ?? "none";
         if (engine.backupNeedsPassword) {
-          describe2(backupSection, t("Your keys aren't backed up yet, so new browsers can't read your encrypted messages. Enter your account password to back them up."));
+          describe(backupSection, t("Your keys aren't backed up yet, so new browsers can't read your encrypted messages. Enter your account password to back them up."));
           backupSection.append(backupPasswordForm(() => renderBackup(true)));
           return;
         }
         if (!backup)
-          return void describe2(backupSection, t("Your keys aren't backed up yet. Open the app on a browser that can read your messages to back them up."));
+          return void describe(backupSection, t("Your keys aren't backed up yet. Open the app on a browser that can read your messages to back them up."));
         if (backup.mode === "recovery")
-          describe2(backupSection, t("Your keys have a recovery-code backup. In trusted-server mode, your account password can also recover a browser through the instance; advanced safety mode uses your recovery code or another device."));
+          describe(backupSection, t("Your keys have a recovery-code backup. In trusted-server mode, your account password can also recover a browser through the instance; advanced safety mode uses your recovery code or another device."));
         else if (backup.wrapped_secret)
-          describe2(backupSection, t("Your keys are backed up and locked with your account password, so new browsers unlock as soon as you sign in. Someone with a copy of the server's database could try to guess a weak password offline."));
+          describe(backupSection, t("Your keys are backed up and locked with your account password, so new browsers unlock as soon as you sign in. Someone with a copy of the server's database could try to guess a weak password offline."));
         else
-          describe2(backupSection, t("Your keys are backed up, but they aren't locked with your password yet. Open the app on a browser that can read your messages to finish the backup."));
+          describe(backupSection, t("Your keys are backed up, but they aren't locked with your password yet. Open the app on a browser that can read your messages to finish the backup."));
         if (!engine.hasSecret)
           return;
         if (backup.mode === "password") {
@@ -7043,7 +7027,7 @@ ${approver}`;
       root.className = "fe2ee-page";
       container.replaceChildren(root);
       if (!engine.userId) {
-        describe2(root, failure ?? paused ?? t("Encryption is still starting up."));
+        describe(root, failure ?? paused ?? t("Encryption is still starting up."));
         return () => {};
       }
       const stop = buildSettings(root);
@@ -7170,7 +7154,7 @@ ${approver}`;
       if (!channelId)
         return existing?.remove();
       const toolbars = [...document.querySelectorAll('[class*="toolbar__"]')];
-      const toolbar = toolbars.find((t2) => t2.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
+      const toolbar = toolbars.find((t) => t.parentElement?.className.includes("upperContainer")) ?? toolbars[0];
       if (!toolbar)
         return;
       const on = engine.isEncrypted(channelId);
@@ -7268,8 +7252,8 @@ ${approver}`;
       bar.setAttribute("role", notice.tone === "danger" ? "alert" : "status");
       bar.innerHTML = `${svg(notice.tone === "info" ? LOCK_PATH : OPEN_LOCK_PATH)}<p>${escape(notice.text)}</p>`;
       if (notice.action) {
-        const { run: run2 } = notice.action;
-        bar.append(button(notice.action.label, "secondary", run2));
+        const { run } = notice.action;
+        bar.append(button(notice.action.label, "secondary", run));
       }
     };
     const refresh = () => {
@@ -7443,12 +7427,12 @@ ${approver}`;
       }).catch((error) => {
         if (error?.status === 401 && requestingUser && requestingUser === engine.userId)
           sessionEnded();
-        throw error;
+        throw requestFailure(error);
       });
       if (res.status === 401 && requestingUser && requestingUser === engine.userId)
         sessionEnded();
       if (!res.ok)
-        throw res;
+        throw requestFailure(res);
       return res.body;
     }
   };
@@ -7677,10 +7661,10 @@ ${approver}`;
         link.request().catch(() => {});
     } catch (error) {
       const response = error;
-      if (typeof response?.status !== "number")
+      if (!isTransientRequestError(error) && typeof response?.status !== "number")
         return fail(`Self-test failed: ${describeError(error)}`);
-      const retryAfter = Number(response.body?.retry_after);
-      const limited = response.status === 429 && retryAfter > 0;
+      const retryAfter = Number(response?.body?.retry_after);
+      const limited = response?.status === 429 && retryAfter > 0;
       const delay = limited ? Math.ceil(retryAfter) * 1000 + 1000 : Math.min(5000 * 2 ** startAttempts, 300000);
       startAttempts++;
       console.warn(`[e2ee] couldn't start (${describeError(error)}), retrying in ${Math.round(delay / 1000)}s`);
@@ -7759,6 +7743,14 @@ ${approver}`;
   };
   var installed = { dispatcher: false, http: false, gateway: false };
   var startedAt = Date.now();
+  var recoverConnection = () => {
+    if (!initialized || signedOut || loggedOut)
+      return;
+    engine.invalidateAll();
+    hooks.retryAll();
+    refreshSelf(engine.userId);
+  };
+  window.addEventListener("online", recoverConnection);
   var tick = () => {
     if (failure)
       return;
@@ -7783,9 +7775,11 @@ ${approver}`;
           start(user.id);
         else
           startWhenReady();
+        recoverConnection();
       });
       targets.dispatcher.subscribe("CHANNEL_RECIPIENT_ADD", (action) => engine.invalidateChannel(String(action.channelId)));
       targets.dispatcher.subscribe("CHANNEL_RECIPIENT_REMOVE", (action) => engine.invalidateChannel(String(action.channelId)));
+      targets.dispatcher.subscribe("CONNECTION_RESUMED", recoverConnection);
     }
     if (targets.gateway && !installed.gateway && targets.gateway.getSocket().dispatcher.getDispatchHandler) {
       installed.gateway = true;
