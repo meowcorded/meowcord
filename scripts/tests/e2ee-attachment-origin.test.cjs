@@ -169,7 +169,7 @@ test("actual attachment registry feeds normalized URL to actual service worker a
             const response = await w.serve(m.attachments[0].url);
             assert.equal(response.status, 200);
             assert.equal(await response.text(), await f.original.text());
-            assert.deepEqual(w.calls, [{ url: `${origin}/attachments/10/30/opaque.bin?ex=1&sig=a%2Bb`, credentials: "omit" }]);
+            assert.deepEqual(w.calls, [{ url: `${origin}/attachments/10/30/opaque.bin?ex=1&sig=a%2Bb`, credentials: "same-origin" }]);
             assert.equal(response.headers.get("content-disposition"), "inline; filename*=UTF-8''private.txt");
         } finally {
             w.close();
@@ -191,6 +191,52 @@ test("actual registry and worker preserve unrelated external ciphertext URLs", a
         w.close();
     }
 });
+test("encrypted image, audio and video bytes remain readable with client format queries", async () => {
+    for (const [filename, content_type] of [
+        ["image.png", "image/png"],
+        ["audio.mp3", "audio/mpeg"],
+        ["video.mp4", "video/mp4"],
+    ]) {
+        const origin = "https://chat.example";
+        const f = await fixture(origin);
+        Object.assign(f.payload.attachments[0], { filename, content_type });
+        const m = message("/attachments/10/30/opaque.bin");
+        f.r.attachments.apply(m, f.payload);
+        const w = worker(origin, f.r, f.ciphertext);
+        try {
+            const response = await w.serve(m.attachments[0].url + (content_type.startsWith("video/") ? "" : "?format=webp"));
+            assert.equal(response.status, 200);
+            assert.equal(response.headers.get("content-type"), content_type);
+            assert.equal(await response.text(), await f.original.text());
+        } finally {
+            w.close();
+        }
+    }
+});
+
+test("video previews may finish after the ordinary file metadata timeout", { timeout: 15_000 }, async () => {
+    const origin = "https://chat.example";
+    const f = await fixture(origin);
+    Object.assign(f.payload.attachments[0], { filename: "video.mp4", content_type: "video/mp4" });
+    const m = message("/attachments/10/30/opaque.bin");
+    f.r.attachments.apply(m, f.payload);
+    const listener = f.r.message;
+    f.r.message = (event) => {
+        if (event.data.type === "fosscord-e2ee-poster") {
+            setTimeout(() => event.ports[0].postMessage(new Blob(["poster"], { type: "image/jpeg" })), 5500);
+        } else listener(event);
+    };
+    const w = worker(origin, f.r, f.ciphertext);
+    try {
+        const response = await w.serve(`${m.attachments[0].url}?format=webp`);
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get("content-type"), "image/jpeg");
+        assert.equal(await response.text(), "poster");
+    } finally {
+        w.close();
+    }
+});
+
 test("mismatched channel, filename and invalid local locators never enter registry or fetch worker ciphertext", async () => {
     const origin = "https://chat.example";
     for (const value of [
@@ -225,7 +271,7 @@ test("real browser service worker fetches registered ciphertext from opened orig
     const path = require("node:path");
     const os = require("node:os");
     const { createRequire } = require("node:module");
-    const { chromium } = createRequire(path.join(os.homedir(), ".cache/fosscord-tools/package.json"))("playwright-core");
+    const { chromium } = createRequire(process.env.PLAYWRIGHT_PACKAGE || path.join(os.homedir(), ".cache/fosscord-tools/package.json"))("playwright-core");
     const js = buildSync({
         stdin: {
             contents:
@@ -248,7 +294,10 @@ test("real browser service worker fetches registered ciphertext from opened orig
     let ciphertext;
     const received = [];
     const server = http.createServer(async (req, res) => {
-        if (req.url === "/") return res.end('<script src="/fixture.js"></script>');
+        if (req.url === "/") {
+            res.setHeader("Set-Cookie", "media_access=allowed; HttpOnly; SameSite=Lax; Path=/");
+            return res.end('<script src="/fixture.js"></script>');
+        }
         if (req.url === "/fixture.js" || req.url === "/e2ee-sw.js") {
             res.setHeader("Content-Type", "application/javascript");
             return res.end(req.url === "/fixture.js" ? js : workerJs);
@@ -260,6 +309,10 @@ test("real browser service worker fetches registered ciphertext from opened orig
             return res.end();
         }
         if (req.url === "/attachments/10/30/opaque.bin?sig=a%2Bb") {
+            if (!req.headers.cookie?.includes("media_access=allowed")) {
+                res.statusCode = 403;
+                return res.end("Proxy authentication required");
+            }
             received.push(req.url);
             return res.end(ciphertext);
         }
@@ -319,16 +372,61 @@ test("real browser service worker fetches registered ciphertext from opened orig
                 ],
             });
             const response = await fetch(message.attachments[0].url);
+            const text = await response.text();
+            const canvas = document.createElement("canvas");
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext("2d");
+            context.fillStyle = "red";
+            context.fillRect(0, 0, 32, 32);
+            const image = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+            const stream = canvas.captureStream(10);
+            const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+            const chunks = [];
+            recorder.ondataavailable = (event) => chunks.push(event.data);
+            const recorded = new Promise((resolve) => {
+                recorder.onstop = () => resolve(new Blob(chunks, { type: "video/webm" }));
+            });
+            recorder.start();
+            context.fillStyle = "blue";
+            context.fillRect(0, 0, 32, 32);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            recorder.stop();
+            const video = await recorded;
+            stream.getTracks().forEach((track) => track.stop());
+            const media = [];
+            for (const [id, filename, original, type] of [
+                ["31", "image.png", image, "image/png"],
+                ["32", "video.webm", video, "video/webm"],
+            ]) {
+                await fetch("/ciphertext-fixture", { method: "POST", body: await fixture.encryptFile(original, raw, iv) });
+                const m = { id: "21", channel_id: "10", attachments: [{ id, filename: "opaque.bin", url: `${location.origin}/attachments/10/30/opaque.bin?sig=a%2Bb` }] };
+                attachments.apply(m, {
+                    content: "fixture",
+                    attachments: [{ name: "opaque.bin", filename, content_type: type, size: original.size, key: fixture.toB64u(raw), iv: fixture.toB64u(iv) }],
+                });
+                const shown = await fetch(`${m.attachments[0].url}?format=webp`);
+                const shownBlob = await shown.blob();
+                if (!shown.ok) throw new Error(`${filename}: ${shown.status} ${shown.headers.get("X-E2EE-Error")} ${await shownBlob.text()}`);
+                const bitmap = await createImageBitmap(shownBlob);
+                media.push({ status: shown.status, type: shown.headers.get("content-type"), width: bitmap.width, height: bitmap.height });
+                bitmap.close();
+            }
             return {
                 status: response.status,
-                text: await response.text(),
+                text,
                 virtualUrl: message.attachments[0].url,
+                media,
             };
         });
         assert.equal(result.status, 200);
         assert.equal(result.text, "synthetic encrypted fixture bytes");
         assert.equal(result.virtualUrl, `${origin}/e2ee/attachments/10/30/private.txt`);
-        assert.deepEqual(received, ["/attachments/10/30/opaque.bin?sig=a%2Bb"]);
+        assert.deepEqual(received, Array(3).fill("/attachments/10/30/opaque.bin?sig=a%2Bb"));
+        assert.deepEqual(result.media, [
+            { status: 200, type: "image/png", width: 32, height: 32 },
+            { status: 200, type: "image/jpeg", width: 32, height: 32 },
+        ]);
         assert.deepEqual(unexpected, []);
     } finally {
         await browser?.close();

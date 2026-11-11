@@ -74,14 +74,22 @@ When nothing can unlock the backup, "Reset encryption" in the unlock dialog or i
 
 When a send can't be encrypted, the draft stays in the composer with an error, and nothing is sent in plaintext.
 
+Network failures during encryption startup pause sending and retry with backoff instead of permanently disabling encryption in that tab. Failed message key requests retry after 30 seconds, or the server's longer rate-limit delay. The retry queue holds at most 256 messages. Gateway reconnects and the browser's online event invalidate cached key directories and retry queued messages. Invalid signatures and malformed ciphertext are not retried as network failures.
+
 A member who never signed in since encryption existed has no keys and can't read new messages. When every other member is in that state, the browser refuses the send and names them. Otherwise the message goes to the rest with a warning that names them.
 
 These work in encrypted conversations too:
 
 - Attachments, stickers and voice messages. The browser encrypts files in 64 KiB chunks before upload, so the server only sees an opaque `.bin` file of the same size plus 16 bytes per chunk. A service worker at `/e2ee-sw.js` decrypts them for display.
 - Mentions. The sending browser lists up to 100 mentioned members in the envelope in plaintext, so badges and push notifications work.
-- Search. The browser decrypts the channel's last 1000 messages and searches them, and the query never reaches the server.
+- Search. The browser decrypts the channel's last 1000 messages and searches them, and the query never reaches the server. Contains filters match decrypted attachment types, links and stickers. The media, files and links tabs use the same local filters. Multiple contains types combine with OR, and exclusions combine with AND.
 - Link previews. The reader's browser sends up to 5 links to `POST /e2ee/embeds` and gets their previews back. The server stores no embed on the message.
+
+Concurrent preview requests for the same link share one fetch. Local encrypted attachment URLs are not fetched as public preview images.
+
+The attachment worker includes same-origin cookies when fetching ciphertext so authenticated reverse proxies can authorize media requests. Cross-origin fetches do not include cookies.
+
+Encrypted video thumbnails are rendered in the browser. The attachment worker allows 20 seconds for a thumbnail response, longer than the renderer's 10 second deadline. Failed attachment responses are not cached and identify missing keys, unavailable ciphertext or an unavailable preview in the `X-E2EE-Error` header.
 
 Polls, clips, forwards, components and text-to-speech are not available.
 
