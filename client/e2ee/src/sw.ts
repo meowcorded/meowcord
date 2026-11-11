@@ -73,7 +73,7 @@ const plaintext = (path: string, entry: FileEntry) => {
         return hit.blob;
     }
     const blob = (async () => {
-        const res = await fetch(entry.url, { credentials: "omit" });
+        const res = await fetch(entry.url, { credentials: "same-origin" });
         if (!res.ok) throw new Error(`ciphertext fetch failed with ${res.status}`);
         const parts = await decryptFile(await res.arrayBuffer(), entry.key, entry.iv);
         const out = new Blob(parts);

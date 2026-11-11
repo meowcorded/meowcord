@@ -114,7 +114,7 @@ ${final ? 1 : 0}`);
       return hit.blob;
     }
     const blob = (async () => {
-      const res = await fetch(entry.url, { credentials: "omit" });
+      const res = await fetch(entry.url, { credentials: "same-origin" });
       if (!res.ok)
         throw new Error(`ciphertext fetch failed with ${res.status}`);
       const parts = await decryptFile(await res.arrayBuffer(), entry.key, entry.iv);
@@ -143,7 +143,7 @@ ${final ? 1 : 0}`);
     if (!pending) {
       pending = ask({ type: "fosscord-e2ee-poster", blob, content_type: entry.content_type }, clientId);
       posters.set(path, pending);
-      pending.then((image2) => image2 || posters.delete(path));
+      pending.then((image) => image || posters.delete(path));
     }
     const image = await pending;
     if (!image)
