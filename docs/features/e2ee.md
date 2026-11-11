@@ -89,7 +89,7 @@ Concurrent preview requests for the same link share one fetch. Local encrypted a
 
 The attachment worker includes same-origin cookies when fetching ciphertext so authenticated reverse proxies can authorize media requests. Cross-origin fetches do not include cookies.
 
-Encrypted video thumbnails are rendered in the browser. The attachment worker allows 20 seconds for a thumbnail response, longer than the renderer's 10 second deadline. Failed attachment responses are not cached and identify missing keys, unavailable ciphertext or an unavailable preview in the `X-E2EE-Error` header.
+Encrypted video thumbnails are rendered in the browser. At most two thumbnails decode at once, and each video or audio element is paused and reset after reading metadata or a poster so Firefox releases its media decoder. The attachment worker allows 20 seconds for a thumbnail response, longer than the renderer's 10 second deadline. Failed attachment responses are not cached and identify missing keys, unavailable ciphertext or an unavailable preview in the `X-E2EE-Error` header.
 
 Polls, clips, forwards, components and text-to-speech are not available.
 
