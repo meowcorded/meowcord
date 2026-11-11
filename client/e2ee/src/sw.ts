@@ -40,25 +40,32 @@ interface WorkerScope {
 const sw = self as unknown as WorkerScope;
 const CACHE_BYTES = 256 * 1024 * 1024;
 const ASK_TIMEOUT_MS = 5000;
+const POSTER_TIMEOUT_MS = 20000;
 
 const entries = new BoundedMap<string, FileEntry>(2000);
 const files = new Map<string, { size: number; blob: Promise<Blob> }>();
 const posters = new BoundedMap<string, Promise<Blob | null>>(64);
 
-const ask = async <T>(message: Record<string, unknown>, clientId = "") => {
+const ask = async <T>(message: Record<string, unknown>, clientId = "", timeoutMs = ASK_TIMEOUT_MS) => {
     const own = clientId ? await sw.clients.get(clientId) : undefined;
     const windows = own ? [own] : await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (!windows.length) return null;
     return new Promise<T | null>((resolve) => {
         let left = windows.length;
-        const timer = setTimeout(() => resolve(null), ASK_TIMEOUT_MS);
+        const ports: MessagePort[] = [];
+        const finish = (answer: T | null) => {
+            clearTimeout(timer);
+            for (const port of ports) port.close();
+            resolve(answer);
+        };
+        const timer = setTimeout(() => resolve(null), timeoutMs);
         for (const client of windows) {
             const channel = new MessageChannel();
+            ports.push(channel.port1);
             channel.port1.onmessage = (event) => {
                 const answer = event.data as T | null;
                 if (!answer && --left > 0) return;
-                clearTimeout(timer);
-                resolve(answer);
+                finish(answer);
             };
             client.postMessage(message, [channel.port2]);
         }
@@ -73,7 +80,7 @@ const plaintext = (path: string, entry: FileEntry) => {
         return hit.blob;
     }
     const blob = (async () => {
-        const res = await fetch(entry.url, { credentials: "omit" });
+        const res = await fetch(entry.url, { credentials: "same-origin" });
         if (!res.ok) throw new Error(`ciphertext fetch failed with ${res.status}`);
         const parts = await decryptFile(await res.arrayBuffer(), entry.key, entry.iv);
         const out = new Blob(parts);
@@ -91,21 +98,21 @@ const plaintext = (path: string, entry: FileEntry) => {
     return blob;
 };
 
-const missing = () =>
+const missing = (reason: string) =>
     new Response("This content is no longer available.", {
         status: 404,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-E2EE-Error": reason, },
     });
 
 const poster = async (path: string, entry: FileEntry, blob: Blob, clientId: string) => {
     let pending = posters.get(path);
     if (!pending) {
-        pending = ask<Blob>({ type: "fosscord-e2ee-poster", blob, content_type: entry.content_type }, clientId);
+        pending = ask<Blob>({ type: "fosscord-e2ee-poster", blob, content_type: entry.content_type }, clientId, POSTER_TIMEOUT_MS);
         posters.set(path, pending);
         pending.then((image) => image || posters.delete(path));
     }
     const image = await pending;
-    if (!image) return missing();
+    if (!image) return missing("preview-unavailable");
     return new Response(image, {
         headers: {
             "Content-Type": image.type || "image/jpeg",
@@ -121,7 +128,7 @@ const serve = async (request: Request, url: URL, clientId: string) => {
     let entry = entries.get(path);
     if (!entry) {
         entry = (await ask<FileEntry>({ type: "fosscord-e2ee-file", path })) ?? undefined;
-        if (!entry) return missing();
+        if (!entry) return missing("file-key-unavailable");
         entries.set(path, entry);
     }
     let blob: Blob;
@@ -129,7 +136,7 @@ const serve = async (request: Request, url: URL, clientId: string) => {
         blob = await plaintext(path, entry);
     } catch (error) {
         console.error("[e2ee] couldn't decrypt an attachment", error);
-        return missing();
+        return missing("ciphertext-unavailable-or-invalid");
     }
     if (url.searchParams.has("format") && entry.content_type.startsWith("video/")) return poster(path, entry, blob, clientId);
     const { type, inline } = servedType(entry.content_type);
