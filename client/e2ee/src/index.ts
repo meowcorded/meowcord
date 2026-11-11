@@ -8,6 +8,7 @@ import { createUi } from "./ui";
 import { StickerMeta } from "./files";
 import { browserStorage } from "./store";
 import { findStore, HttpClient, scan, Targets } from "./webpack";
+import { isTransientRequestError, requestFailure } from "./network";
 import { locale, t } from "./i18n";
 
 interface LoaderState {

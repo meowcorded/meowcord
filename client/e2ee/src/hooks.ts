@@ -217,7 +217,7 @@ export const createHooks = (ctx: HookContext) => {
                     states.set(message.id, { state, reason: errorText(error) });
                     if (transient || state === "locked" || state === "missing") retry.set(message.id, original);
                     if (transient && !retryTimer) {
-                        const retryAfter = Number(error?.body?.retry_after);
+                        const retryAfter = Number((error as { body?: { retry_after?: unknown } })?.body?.retry_after);
                         const delay = Number.isFinite(retryAfter)
                             ? Math.max(30_000, retryAfter * 1000 + 1000)
                             : 30_000;
