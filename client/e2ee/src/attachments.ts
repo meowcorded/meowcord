@@ -79,12 +79,15 @@ const renderPoster = (blob: Blob, type: string) =>
         const src = URL.createObjectURL(new Blob([blob], { type }));
         const done = (image: Blob | null) => {
             clearTimeout(timer);
+            video.onloadeddata = null;
+            video.onerror = null;
             video.removeAttribute("src");
             URL.revokeObjectURL(src);
             resolve(image);
         };
         const timer = setTimeout(() => done(null), 10000);
         video.muted = true;
+        video.playsInline = true;
         video.preload = "auto";
         video.onloadeddata = () => {
             const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
