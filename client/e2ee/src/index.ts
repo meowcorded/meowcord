@@ -57,10 +57,10 @@ const api: Api = {
             retries: 0,
         }).catch((error: unknown) => {
             if ((error as { status?: number } | null)?.status === 401 && requestingUser && requestingUser === engine.userId) sessionEnded();
-            throw error;
+            throw requestFailure(error);
         });
         if (res.status === 401 && requestingUser && requestingUser === engine.userId) sessionEnded();
-        if (!res.ok) throw res;
+        if (!res.ok) throw requestFailure(res);
         return res.body as T;
     },
 };
@@ -288,9 +288,9 @@ const start = async (userId: string) => {
         if (engine.locked && engine.encryptedChannels.size && !ui.unlockSnoozed()) link.request().catch(() => {});
     } catch (error) {
         const response = error as { status?: unknown; body?: { retry_after?: unknown } } | null;
-        if (typeof response?.status !== "number") return fail(`Self-test failed: ${describeError(error)}`);
-        const retryAfter = Number(response.body?.retry_after);
-        const limited = response.status === 429 && retryAfter > 0;
+        if (!isTransientRequestError(error) && typeof response?.status !== "number") return fail(`Self-test failed: ${describeError(error)}`);
+        const retryAfter = Number(response?.body?.retry_after);
+        const limited = response?.status === 429 && retryAfter > 0;
         const delay = limited ? Math.ceil(retryAfter) * 1000 + 1000 : Math.min(5000 * 2 ** startAttempts, 300000);
         startAttempts++;
         console.warn(`[e2ee] couldn't start (${describeError(error)}), retrying in ${Math.round(delay / 1000)}s`);
@@ -376,6 +376,15 @@ const custom = {
 const installed = { dispatcher: false, http: false, gateway: false };
 const startedAt = Date.now();
 
+const recoverConnection = () => {
+    if (!initialized || signedOut || loggedOut) return;
+    engine.invalidateAll();
+    hooks.retryAll();
+    refreshSelf(engine.userId);
+};
+
+window.addEventListener("online", recoverConnection);
+
 const tick = () => {
     if (failure) return;
     scan(loader.reqs, targets);
@@ -396,9 +405,11 @@ const tick = () => {
             const user = action.user as { id?: string } | undefined;
             if (user?.id) start(user.id);
             else startWhenReady();
+            recoverConnection();
         });
         targets.dispatcher.subscribe("CHANNEL_RECIPIENT_ADD", (action) => engine.invalidateChannel(String(action.channelId)));
         targets.dispatcher.subscribe("CHANNEL_RECIPIENT_REMOVE", (action) => engine.invalidateChannel(String(action.channelId)));
+        targets.dispatcher.subscribe("CONNECTION_RESUMED", recoverConnection);
     }
     if (targets.gateway && !installed.gateway && targets.gateway.getSocket().dispatcher.getDispatchHandler) {
         installed.gateway = true;

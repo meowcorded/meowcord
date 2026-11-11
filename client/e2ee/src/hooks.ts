@@ -2,6 +2,7 @@ import { Attachments, UploadRef } from "./attachments";
 import { E2eeError, Engine, errorText, FALLBACK_CONTENT, mentionedIn, PLAINTEXT_CACHE_SIZE, RawMessage } from "./engine";
 import { BoundedMap } from "./boundedMap";
 import { Payload, StickerMeta } from "./files";
+import { matchesSearch, readSearchQuery, SearchQuery } from "./search";
 import { isTransientRequestError } from "./network";
 import { DispatchHandler, Dispatcher, FluxAction, GatewayStore, HttpCall, HttpClient, HttpMethod, HttpOptions, HttpResponse } from "./webpack";
 import { t } from "./i18n";
@@ -31,14 +32,6 @@ const SEARCH_URL = /^\/channels\/(\d+)\/messages\/search(\/tabs)?$/;
 const SEARCH_PAGES = 10;
 const READABLE_CHANNELS = 50;
 const READABLE_PER_CHANNEL = SEARCH_PAGES * 100 + 1000;
-
-interface SearchQuery {
-    content?: string;
-    author_id?: string | string[];
-    offset?: number | string;
-    limit?: number | string;
-    sort_order?: string;
-}
 
 export interface HookContext {
     engine: Engine;
@@ -338,15 +331,7 @@ export const createHooks = (ctx: HookContext) => {
         }
         const all = [...(readable.get(channelId)?.values() ?? [])].filter((m) => states.get(m.id)?.state === "decrypted").sort((a, b) => (BigInt(b.id) > BigInt(a.id) ? 1 : -1));
         return queries.map((query) => {
-            const words = String(query.content ?? "")
-                .toLowerCase()
-                .split(/\s+/)
-                .filter(Boolean);
-            const authors = [query.author_id ?? []].flat().map(String);
-            const hits = all.filter((m) => {
-                const text = String(m.content ?? "").toLowerCase();
-                return words.every((w) => text.includes(w)) && (!authors.length || authors.includes(String(m.author?.id)));
-            });
+            const hits = all.filter((message) => matchesSearch(message, query));
             if (query.sort_order === "asc") hits.reverse();
             const offset = Number(query.offset ?? 0) || 0;
             const limit = Number(query.limit ?? 25) || 25;
@@ -452,13 +437,7 @@ export const createHooks = (ctx: HookContext) => {
                         if (typeof extra === "string") new URLSearchParams(extra).forEach((value, name) => params.append(name, value));
                         else if (extra && typeof extra === "object")
                             Object.entries(extra).forEach(([name, value]) => [value].flat().forEach((v) => v != null && params.append(name, String(v))));
-                        const query: SearchQuery = {
-                            content: params.get("content") ?? undefined,
-                            author_id: params.getAll("author_id"),
-                            offset: params.get("offset") ?? undefined,
-                            limit: params.get("limit") ?? undefined,
-                            sort_order: params.get("sort_order") ?? undefined,
-                        };
+                        const query = readSearchQuery(params);
                         const named = tabs ? Object.entries(((opts.body ?? {}) as { tabs?: Record<string, SearchQuery> }).tabs ?? {}) : [];
                         const results = await searchLocally(originals, channelId, tabs ? named.map(([, q]) => q) : [query]);
                         const body = tabs
