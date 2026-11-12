@@ -12,7 +12,8 @@ export enum CollectibleItemType {
     NAMEPLATE = 2,
     PROFILE_FRAME = 3,
     BUNDLE = 1000,
-    VARIANTS_GROUP = 3000,
+    VARIANTS_GROUP = 2000,
+    EXTERNAL_SKU = 3000,
 }
 
 export interface CollectibleItem {

@@ -68,7 +68,7 @@ test("cached shop search preserves stable sorting, variants, duplicate precedenc
     const variants = {
         sku_id: "300",
         name: "Alpha",
-        type: 3000,
+        type: 2000,
         is_first_party: false,
         variants: [{ type: 2 }],
         items: [{ label: "special" }],
