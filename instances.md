@@ -22,3 +22,4 @@ public meowcord instances. this file is generated from [instances.json](instance
 | GTDcord | [chat.gtdmc.org](https://chat.gtdmc.org) |  |
 | FemCord | [chat.femboy.cyou](https://chat.femboy.cyou) | [MDCYT/femcord](https://github.com/MDCYT/femcord) |
 | Happycord | [happycord.opuadm.com](https://happycord.opuadm.com) | [opuadm/happycord](https://github.com/opuadm/happycord) |
+| empathist | [empath.ist](https://empath.ist) | [obscurejames/meowcord](https://github.com/obscurejames/meowcord) |
