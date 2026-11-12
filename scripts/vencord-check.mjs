@@ -53,6 +53,7 @@ const report = {
     errors: [],
     unmatchedAllPatches: [],
     meta: null,
+    assetFailures: [],
 };
 
 const unmatchedAllPatches = (names) => {
@@ -67,6 +68,7 @@ const unmatchedAllPatches = (names) => {
 const browser = await playwright.chromium.launch({
     executablePath: chromiumPath(),
     headless: true,
+    args: ["--disable-quic"],
 });
 const page = await browser.newPage();
 await page.route(/\/assets\/vencord\/vencord\.js/, (route) => route.fulfill({ contentType: "text/javascript", body: readFileSync(reporterScript, "utf8") }));
@@ -76,7 +78,8 @@ let finish;
 const finished = new Promise((resolve) => (finish = resolve));
 const describe = (handle) => handle.evaluate((value) => (value instanceof Error ? value.message : typeof value === "string" ? value : JSON.stringify(value))).catch(() => "");
 
-page.on("console", async (message) => {
+const pendingMessages = new Set();
+const handleConsole = async (message) => {
     if (/LazyChunkLoader:.*Loading all chunks/.test(message.text())) loadingChunks = true;
     const args = message.args();
     const first = args[0] ? await describe(args[0]) : "";
@@ -109,6 +112,20 @@ page.on("console", async (message) => {
             finish("done");
         }
     }
+};
+page.on("console", (message) => {
+    if (!/^\[REPORTER_META\]|^\[(?:Vencord|Equicord)\] (?:WebpackPatcher|PluginManager|Reporter|LazyChunkLoader):/.test(message.text())) return;
+    const work = handleConsole(message).catch((error) => report.errors.push(`console handler: ${error.message}`));
+    pendingMessages.add(work);
+    work.finally(() => pendingMessages.delete(work));
+});
+page.on("requestfailed", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/assets/")) report.assetFailures.push({ url: url.origin + url.pathname, error: request.failure()?.errorText });
+});
+page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (response.status() >= 400 && url.pathname.startsWith("/assets/")) report.assetFailures.push({ url: url.origin + url.pathname, status: response.status() });
 });
 page.on("pageerror", (error) => {
     if (!/Sentry successfully disabled/.test(error.message)) report.errors.push(error.message.slice(0, 300));
@@ -117,8 +134,12 @@ page.on("pageerror", (error) => {
 const started = Date.now();
 await page.goto(`${origin}/login`);
 await page.waitForFunction(() => typeof window.Vencord?.Webpack?._initReporter === "function" && typeof window.Vencord?.Webpack?.wreq === "function", null, { timeout });
-if (!loadingChunks) await page.evaluate(() => Vencord.Webpack._initReporter());
+if (!loadingChunks)
+    await page.evaluate(() => {
+        Vencord.Webpack._initReporter();
+    });
 const outcome = await Promise.race([finished, new Promise((resolve) => setTimeout(() => resolve("timeout"), timeout))]);
+while (pendingMessages.size) await Promise.allSettled([...pendingMessages]);
 await browser.close().catch(() => {});
 
 const owner = (plugin) => (ours.has(plugin) ? "fosscord" : enabled.has(plugin) ? "enabled" : "upstream");
@@ -142,10 +163,11 @@ for (const [group, title] of [
     for (const line of groups[group]) console.log(`  - ${line}`);
 }
 if (report.errors.length) console.log(`\nPage errors:\n${[...new Set(report.errors)].map((e) => `  - ${e}`).join("\n")}`);
+if (report.assetFailures.length) console.log(`\nAsset failures:\n${report.assetFailures.map((failure) => `  - ${failure.status ?? failure.error} ${failure.url}`).join("\n")}`);
 console.log(`\nFull report written to ${path.relative(ROOT, reportPath)}`);
 
 if (outcome !== "done") {
     console.error(`\nThe reporter did not finish (${outcome}).`);
     process.exit(1);
 }
-process.exit(groups.fosscord.length || groups.enabled.length ? 1 : 0);
+process.exit(groups.fosscord.length || groups.enabled.length || report.errors.some((error) => error.startsWith("console handler:")) ? 1 : 0);
