@@ -315,7 +315,7 @@ test("self profile flags return empty mutual results without redundant guild or 
     for (const id of ["@me", "123"]) {
         const { get, reads } = harness();
         const profile = await get(mutualQuery, id);
-        assert.deepEqual(reads, ["user", "memberships"]);
+        assert.deepEqual(reads, ["user"]);
         assert.equal(profile.mutual_guilds.length, 0);
         assert.equal(profile.mutual_friends.length, 0);
         assert.equal(profile.mutual_friends_count, 0);
@@ -329,7 +329,7 @@ test("self profile flags return empty mutual results without redundant guild or 
 test("self profile optimization retains existence checks and requested guild profile hydration", async () => {
     const { get, reads } = harness();
     const profile = await get({ ...mutualQuery, guild_id: "123456" });
-    assert.deepEqual(reads, ["guild-access", "user", "memberships", "guild-member"]);
+    assert.deepEqual(reads, ["guild-access", "user", "guild-member"]);
     assert.equal(profile.guild_member_profile.bio, "guild bio");
     assert.deepEqual(Array.from(profile.guild_member.roles), ["role"]);
     const missing = harness();
@@ -353,7 +353,7 @@ test("other user mutual results retain intersection queries and public projectio
 test("unrequested mutual fields stay absent and perform no extra reads", async () => {
     const { get, reads } = harness();
     const profile = await get();
-    assert.deepEqual(reads, ["user", "memberships"]);
+    assert.deepEqual(reads, ["user"]);
     assert.equal(Object.hasOwn(profile, "mutual_guilds"), false);
     assert.equal(Object.hasOwn(profile, "mutual_friends"), false);
     assert.equal(Object.hasOwn(profile, "mutual_friends_count"), false);

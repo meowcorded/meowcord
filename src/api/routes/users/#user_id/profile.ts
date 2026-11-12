@@ -49,17 +49,16 @@ router.get("/", route({ responses: { 200: { body: "UserProfileResponse" } } }), 
         .where("user.id = :user_id", { user_id })
         .getOneOrFail();
 
-    const memberships = await Member.find({
-        where: { id: user_id },
-        select: { guild_id: true, nick: true },
-    });
-
     let mutual_guilds: { id: string; nick: string | null }[] | undefined;
     if (with_mutual_guilds === "true") {
         mutual_guilds = [];
         if (user_id !== req.user_id) {
-            const own = new Set((await Member.find({ where: { id: req.user_id }, select: { guild_id: true } })).map((x) => x.guild_id));
-            mutual_guilds = memberships.filter((x) => own.has(x.guild_id)).map((x) => ({ id: x.guild_id, nick: x.nick ?? null }));
+            const [memberships, ownMemberships] = await Promise.all([
+                Member.find({ where: { id: user_id }, select: { guild_id: true, nick: true } }),
+                Member.find({ where: { id: req.user_id }, select: { guild_id: true } }),
+            ]);
+            const own = new Set(ownMemberships.map((member) => member.guild_id));
+            mutual_guilds = memberships.filter((member) => own.has(member.guild_id)).map((member) => ({ id: member.guild_id, nick: member.nick ?? null }));
         }
     }
 
