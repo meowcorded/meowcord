@@ -169,7 +169,7 @@ test("actual attachment registry feeds normalized URL to actual service worker a
             const response = await w.serve(m.attachments[0].url);
             assert.equal(response.status, 200);
             assert.equal(await response.text(), await f.original.text());
-            assert.deepEqual(w.calls, [{ url: `${origin}/attachments/10/30/opaque.bin?ex=1&sig=a%2Bb`, credentials: "omit" }]);
+            assert.deepEqual(w.calls, [{ url: `${origin}/attachments/10/30/opaque.bin?ex=1&sig=a%2Bb`, credentials: "same-origin" }]);
             assert.equal(response.headers.get("content-disposition"), "inline; filename*=UTF-8''private.txt");
         } finally {
             w.close();

@@ -506,7 +506,9 @@ test("local data-URI reads share the admission budget and refresh after same-pat
         h.files.forEach(({ resolve }) => resolve(Buffer.from("one")));
         const results = await Promise.all([...accepted, duplicate]);
         assert.ok(results.every((result) => result === "data:image/png;base64,b25l"));
+        const changed = new Date(fs.statSync(files[0]).mtimeMs + 1000);
         fs.writeFileSync(files[0], "two");
+        fs.utimesSync(files[0], changed, changed);
         const refreshed = h.branding.instanceIconDataUri();
         await turn();
         assert.equal(h.files.length, 5);
@@ -533,7 +535,9 @@ test("same-path branding updates change public versions and invalidate rendered 
         h.files[0].resolve(Buffer.from("one"));
         await initial;
         assert.equal(h.branding.appIconUrl(512), first.app);
+        const changed = new Date(fs.statSync(file).mtimeMs + 1000);
         fs.writeFileSync(file, "two");
+        fs.utimesSync(file, changed, changed);
         assert.notEqual(h.branding.appIconUrl(512), first.app);
         assert.notEqual(h.branding.brandImageUrls().icon, first.icon);
         const refreshed = h.branding.appIconPng(512);
