@@ -29,6 +29,7 @@
 | [link-embeds.md](features/link-embeds.md) | Link previews and embedded media. |
 | [activities.md](features/activities.md) | Embedded activities. |
 | [profile-widgets.md](features/profile-widgets.md) | Application profile widgets. |
+| [badges.md](features/badges.md) | Activity progression, account anniversaries and badge artwork sources. |
 | [pride-badges.md](features/pride-badges.md) | Pride flags on profiles and at signup. |
 | [avatar-shape.md](features/avatar-shape.md) | Avatar corner radius, from a circle to a square. |
 | [steam-frames.md](features/steam-frames.md) | The Steam avatar frames in the Shop. |

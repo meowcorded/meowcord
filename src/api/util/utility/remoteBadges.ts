@@ -16,6 +16,7 @@ import {
 import { arrangeBadges, badgeSettings } from "./badgeSettings";
 import { federatedInstance, homeCdnBase } from "./federationMedia";
 import { PRIDE_BADGES, prideBadges } from "./prideBadges";
+import { earnedMilestoneBadges, milestones } from "./milestones";
 import { isSubscriptionBadge } from "./profile";
 import { ensureStaffBadge, STAFF_BADGE_ID } from "./staffBadge";
 
@@ -38,11 +39,11 @@ const localBadges = () => {
     return reserved.value;
 };
 
-type BadgeSource = Pick<User, "id" | "badge_ids" | "pride_badges" | "federated_instance">;
+type BadgeSource = Pick<User, "id" | "badge_ids" | "pride_badges" | "federated_instance" | "account_preferences"> & Partial<Pick<User, "created_at">>;
 
 export async function localProfileBadges(user: BadgeSource) {
     const shadow = !!user.federated_instance;
-    const ids = (user.badge_ids ?? []).filter((id) => !shadow || id !== STAFF_BADGE_ID);
+    const ids = (user.badge_ids ?? []).filter((id) => !milestones[id] && (!shadow || id !== STAFF_BADGE_ID));
     const badges: { id: string; description: string; icon: string; link?: string }[] = ids.length ? await Badge.find({ where: { id: In(ids) } }) : [];
     const role = shadow || user.badge_ids?.includes(STAFF_BADGE_ID) ? null : staffBadgeRole(user.id, await loadStaffRoles());
     if (role) {
@@ -50,11 +51,14 @@ export async function localProfileBadges(user: BadgeSource) {
         badges.unshift({ id: `staff-role-${role.id}`, description: `${instanceName()} ${role.name}`, icon: staffBadge.icon, link: staffBadge.link });
     }
     badges.push(...prideBadges(user.pride_badges));
-    return badges.filter((badge) => !isSubscriptionBadge(badge));
+    return [...badges.filter((badge) => !isSubscriptionBadge(badge)), ...(!shadow ? earnedMilestoneBadges(user) : [])];
 }
 
 export async function homeBadges(user_id: string): Promise<WireBadge[]> {
-    const user = await User.findOne({ where: { id: user_id }, select: { id: true, badge_ids: true, pride_badges: true, federated_instance: true, account_preferences: true } });
+    const user = await User.findOne({
+        where: { id: user_id },
+        select: { id: true, badge_ids: true, pride_badges: true, federated_instance: true, account_preferences: true, created_at: true },
+    });
     if (!user || user.federated_instance) return [];
     const cdn = homeCdnBase();
     if (!cdn) return [];

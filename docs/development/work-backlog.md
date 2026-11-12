@@ -21,6 +21,8 @@ Start with `client/plugins; assets/public/admin`.
 
 ## Pride flags and profile badges (P1)
 
+Account-age and activity progression now have native directory menus and bundled tier artwork, described in [badges.md](../features/badges.md).
+
 Start with `src/api/util/utility/prideBadges.ts; client/plugins/fosscordPride`.
 
 - [ ] **FLAG-007** Verify badges render in compact and expanded profiles.

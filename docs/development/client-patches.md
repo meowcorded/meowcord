@@ -86,6 +86,10 @@ Run `bun run typecheck:equicord` to check the pinned upstream compiler and all i
 
 Run `PORT=<port> TEST_ACCOUNT_PATH=<isolated-seeded-account-file> bun scripts/dev/equicord-toast-smoke.mjs`, then repeat with `BROWSER=webkit`, to verify the role-template success toast in the native client. It creates and deletes an owned server and role, renders the existing plugin component and checks that applying the draft leaves stored permissions unchanged until Save.
 
+## Profile badges
+
+FosscordProfileBadges maps account-age and activity families to native directory ids, refreshes progress while the directory is visible and uses local milestone requirements without changing Discord data-sharing consent. See [activity badges](../features/badges.md) for progression and artwork sources.
+
 ## Branding
 
 These `client.*` config keys control what the client shows in place of Discord's brand:

@@ -1,5 +1,6 @@
 import { Not } from "typeorm";
 import { Config, emitEvent } from "@spacebar/util/util";
+import { ProcessLifecycle } from "@spacebar/util/util/ProcessLifecycle";
 import { Stream } from "../entities/Stream";
 import { StreamSession } from "../entities/StreamSession";
 
@@ -7,6 +8,10 @@ export const StreamPreviews = new Map<string, string>();
 const paused = new Set<string>();
 
 export class GoLiveStreams {
+    static isPaused(id: string) {
+        return paused.has(id);
+    }
+
     static key(stream: Stream) {
         const guildId = stream.channel?.guild_id;
         return guildId ? `guild:${guildId}:${stream.channel_id}:${stream.owner_id}` : `call:${stream.channel_id}:${stream.owner_id}`;
@@ -31,6 +36,7 @@ export class GoLiveStreams {
             else paused.delete(stream.id);
         }
         const viewerIds = await GoLiveStreams.viewers(stream);
+        ProcessLifecycle.eventEmitter.emit("activityProgress", stream.owner_id);
         const data = {
             stream_key: GoLiveStreams.key(stream),
             region: GoLiveStreams.region(stream),
@@ -50,6 +56,7 @@ export class GoLiveStreams {
             StreamPreviews.delete(streamKey);
             paused.delete(stream.id);
             await stream.remove();
+            ProcessLifecycle.eventEmitter.emit("activityProgress", ownerId);
             const guildId = stream.channel?.guild_id;
             await emitEvent({
                 event: "STREAM_DELETE",

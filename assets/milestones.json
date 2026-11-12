@@ -1,0 +1,754 @@
+{
+  "21": {
+    "badge_id": 21,
+    "name": "Game Variety",
+    "metric": "games",
+    "tiers": [
+      {
+        "key": "sampler",
+        "name": "Sampler",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/ed18d5976c01a4ea19f5a13af08f0547582405cbe48b098b0822e352b8e0a822.svg",
+        "simple_icon_raster_url": "content-assets/cbd75cae9bca1c49b35eb0d9c189af4c8604b4f69a1de17ae550db9f03cbd371.png",
+        "complex_icon_static_url": "content-assets/796135a2c54b35bc73ba0928b8fb6a9e94be5c97573800ce0a20830b451650b9.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 2,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "2 games",
+        "icon": "d4eaf7008cca51a71e6d35e0b17f2ed6",
+        "requirement_description": "2 games"
+      },
+      {
+        "key": "dabbler",
+        "name": "Dabbler",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/e450d5279537db06ee47a104af520b884adaa7ffc3ef2627157526bf1c58e840.svg",
+        "simple_icon_raster_url": "content-assets/c9fe2cefaf224c0fb73a5fe11476987930809fa307069deb8bbb2f0b99bac545.png",
+        "complex_icon_static_url": "content-assets/52915e33648e71ad341026a208d92ddbe09c1811e16fd2d9848bf242f6072de1.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "5 games",
+        "icon": "7bee959661788d312b435c27f772096b",
+        "requirement_description": "5 games"
+      },
+      {
+        "key": "enthusiast",
+        "name": "Enthusiast",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/158a9d91b8ca9e96d4afeee38cd640fc51483a8196edb9af0c26e44727acafae.svg",
+        "simple_icon_raster_url": "content-assets/e016406cec55df228f6e4e7ee9ec5ac10cf0ccd5037c5926da5c26c44e32d374.png",
+        "complex_icon_static_url": "content-assets/5169b99e09ee3d398f335908d6a5073ed2e5705951362119c55c9b4cafbf9a0a.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 10,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "10 games",
+        "icon": "967991e28873606b85f63dfedcc264bb",
+        "requirement_description": "10 games"
+      },
+      {
+        "key": "ranger",
+        "name": "Ranger",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/9e491942070007f64011ae4fc478926b96433698c07621fc43bafdd5efe83912.svg",
+        "simple_icon_raster_url": "content-assets/7265bc6f9ff0a47962dafe01b6f9c8f75927392aaf48d48c3619d123d2b584f5.png",
+        "complex_icon_static_url": "content-assets/5e965ee4ea5f88a2149b33897910afb6f662254204c1136e77fb32b62b78ca82.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 15,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "15 games",
+        "icon": "a4ac8eba9069aae5991907b6a74d0d93",
+        "requirement_description": "15 games"
+      },
+      {
+        "key": "explorer",
+        "name": "Explorer",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/e25fc55814262150e154ddb1a2b55fc5ed8ed5ba2ff1a22a33d4a41e651e370a.svg",
+        "simple_icon_raster_url": "content-assets/ffd4938d41c57d27fec0f253a54756c40add56f761c5b1471b531d838e8669db.png",
+        "complex_icon_static_url": "content-assets/0348e010aebcd3bd63023d5103a33def3fde5eb5d7533d460fb04bcb02d4407a.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 20,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "20 games",
+        "icon": "16dd94cbb8438a5eed165c256990cf72",
+        "requirement_description": "20 games"
+      },
+      {
+        "key": "adventurer",
+        "name": "Adventurer",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/542d5277e0001ea738d5eb57b247dcab9ce6e0c29493d5892203f6258fde55b9.svg",
+        "simple_icon_raster_url": "content-assets/dcfdce8dfc254b6e8fa9cfba5dcd918f027e27554c3aa2403fe01eb319cf2194.png",
+        "complex_icon_static_url": "content-assets/17f6b6cf4d586ca2ba01ef6c98e6c795552edf4d155c1547a09abb600c565f72.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 30,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "30 games",
+        "icon": "cee57f6c7a92d90a966c2a059f588b32",
+        "requirement_description": "30 games"
+      },
+      {
+        "key": "voyager",
+        "name": "Voyager",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/082e693cb9ce98b81af618978d449409efc6522b061bc0eac6e88a949fd888c6.svg",
+        "simple_icon_raster_url": "content-assets/183d6521c3696b0b42f73dd9c319307490982a5dffdc34a923b760d82b20916a.png",
+        "complex_icon_static_url": "content-assets/ae9edbe4a39da0d66bfc61b378fdccf4f264d644bfc5819c218f67f5bbb93f6f.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 40,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "40 games",
+        "icon": "b58b52764bd169428d2544ee93a7f4c8",
+        "requirement_description": "40 games"
+      },
+      {
+        "key": "maverick",
+        "name": "Maverick",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/6fc242e9e8259c471a5e4599cd09af5476e622a572ff235883173913bf506103.svg",
+        "simple_icon_raster_url": "content-assets/84d4695cdcbb350ad5385c06e87caf06835872135625a8bff6bac300af858412.png",
+        "complex_icon_static_url": "content-assets/2752ab99ed075e2b6215a86ea09533a8c4e391d4c1ae57babd20152ba3dd77c9.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 60,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "60 games",
+        "icon": "c246f01ea898c845d5d4c3d1d2f54cfa",
+        "requirement_description": "60 games"
+      },
+      {
+        "key": "polymath",
+        "name": "Polymath",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/be9a4d119b8e0d7fc1df7e5a12081332637cb9c978a90377cb9c930500b2fbe6.svg",
+        "simple_icon_raster_url": "content-assets/1d8d9e3254727d1a1c01b194f2d01ade4525dc8b85c39b877af09768eaf031be.png",
+        "complex_icon_static_url": "content-assets/b6b290ba9ea06e86c841af0c885703a620e0eafd13178e39b415599e10d38e88.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 80,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "80 games",
+        "icon": "1cd12b29563246938d497a2a40bc4367",
+        "requirement_description": "80 games"
+      },
+      {
+        "key": "universalist",
+        "name": "Universalist",
+        "rarity": 5,
+        "simple_icon_url": "content-assets/fcc34d343451505c642f3397cec2669a2de3a4a410fb968f794b3a1a0dcd1728.svg",
+        "simple_icon_raster_url": "content-assets/4731855cd51c1d45fd14dc088b80815ea0562a353b48db369092019fbcb44ec7.png",
+        "complex_icon_static_url": "content-assets/2d2224fbc170bef4ef5cfb2475acdc9a27b86d06f1016919a3269f640b5066b5.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 100,
+            "unit": "games"
+          }
+        ],
+        "milestone_text": "100+ games",
+        "icon": "6f170178250451b3e842df2cce7bfb4c",
+        "requirement_description": "100+ games"
+      }
+    ],
+    "leveling_instructions": "Play different detectable PC games with this instance open to level up this badge."
+  },
+  "20": {
+    "badge_id": 20,
+    "name": "Game Time",
+    "metric": "played_ms",
+    "tiers": [
+      {
+        "key": "casual",
+        "name": "Casual",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/b75fcc4dd1c65dfd4169a203e21023453fd6fe853c9b5c1fd839781fda98e80d.svg",
+        "simple_icon_raster_url": "content-assets/c2844b37da74241525c1001c2ae5dd2719beb0095af8f88dcb35a37ceb0e1892.png",
+        "complex_icon_static_url": "content-assets/1f9d42f34184814a137e40b0de83e2cac0ae44d83531777b9369d2e2a6ddfeb3.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 1,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "1 hour",
+        "icon": "8b271b0c4c832d1496aa19a54047c3f0",
+        "requirement_description": "1 hour"
+      },
+      {
+        "key": "recreational",
+        "name": "Recreational",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/68b84fae379e1370b3216b3fe1243b6d7c9d9ae631c5f7416d35d20d3ea0fa04.svg",
+        "simple_icon_raster_url": "content-assets/157b789531c602542070e680c410d74275e796b6c45cd717292f6d2a59593972.png",
+        "complex_icon_static_url": "content-assets/451e733482d640fac424b937ec8b27dc62e3426dc937ce35818d262e9bdb57c7.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "5 hours",
+        "icon": "841407679d034548ddf22ac4177aad32",
+        "requirement_description": "5 hours"
+      },
+      {
+        "key": "dedicated",
+        "name": "Dedicated",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/e0c82f41bcad94a2a52713800fbef7687d0d2c6a6066b09d5e5876156d086e1a.svg",
+        "simple_icon_raster_url": "content-assets/d6ab0696aae97fca8e6b2b88d4117f09f9ea895d4f0cebee770564369ff06873.png",
+        "complex_icon_static_url": "content-assets/c12fc54ecf68afdeba97999f5378f93f10e476fb1c87e90a881ec5667e1ff9d1.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 20,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "20 hours",
+        "icon": "0378100e85e120f4f31072a430e9620d",
+        "requirement_description": "20 hours"
+      },
+      {
+        "key": "committed",
+        "name": "Committed",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/8e0ecf91470745aef93dc5b7bdce31b4e43c44632141a3d71da93bd89ca4db2d.svg",
+        "simple_icon_raster_url": "content-assets/cc1edd8d955872cd9fbd9bafec80c973287817560d0895587686e3e1671a698e.png",
+        "complex_icon_static_url": "content-assets/2c1d8204adc7fc888fe13e3a5a0e25884e2ade87a218b0987d07be12d19a719f.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 75,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "75 hours",
+        "icon": "bfd3ef308b24e763a7904a360f7e5ccd",
+        "requirement_description": "75 hours"
+      },
+      {
+        "key": "serious",
+        "name": "Serious",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/ba26e83fa68189b41837184e38706f41c288dd29ffba266035d1a5ad9adbae22.svg",
+        "simple_icon_raster_url": "content-assets/4039caeef586467d50939f3154f87828645d6f1bd699b8f0c1da686b02cefe68.png",
+        "complex_icon_static_url": "content-assets/470d7a7519c51b46592d18b12f4aa07eaedf156b11ee13d22c81312fae38da1e.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 150,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "150 hours",
+        "icon": "23bdbc92a09bde524cab083d2c379dc0",
+        "requirement_description": "150 hours"
+      },
+      {
+        "key": "devoted",
+        "name": "Devoted",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/851b194288f1913ece6c8d99976519e48210580d6f42d994f21e37801611ad54.svg",
+        "simple_icon_raster_url": "content-assets/3d39b6cef7f00fe9e2d51f229034650b900481823af05d09e6537e912de30301.png",
+        "complex_icon_static_url": "content-assets/f7a892701a5628e95ec74caa814f722e96c4d62a66833de8239290fd2e3bf672.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 300,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "300 hours",
+        "icon": "ee7ee7d42a1417c08547043969f151be",
+        "requirement_description": "300 hours"
+      },
+      {
+        "key": "seasoned",
+        "name": "Seasoned",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/8b10f5c0c30abbd521be5afc2e0dd4ec6da18bfbc689f06d93a51d06577cd84a.svg",
+        "simple_icon_raster_url": "content-assets/46512ce94203c84d7919904acfbd07fc5a8316010a610b8fd6a1cc937e5ac75e.png",
+        "complex_icon_static_url": "content-assets/76fefae72378b331774887012577c8c942f4846b9bb1d9f58d39e867adf328e3.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 500,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "500 hours",
+        "icon": "5af667c5390fbe4d6f1e262d607f880b",
+        "requirement_description": "500 hours"
+      },
+      {
+        "key": "ironclad",
+        "name": "Ironclad",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/d705628490898f2cc22d669cf8b415bc03fed1ddaf98a2a8cbd97442a509293c.svg",
+        "simple_icon_raster_url": "content-assets/9bff716e6bae2ef42dc959bac05a0dfc480bf89484c111ed7fb4aa0332cb22d8.png",
+        "complex_icon_static_url": "content-assets/d7a2df844cda56877b016e667f2fecead85a65c68a1487d4b2f94300d9d20f71.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 1000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "1,000 hours",
+        "icon": "c49cef45e7a0e3872a086daebd427822",
+        "requirement_description": "1,000 hours"
+      },
+      {
+        "key": "unshakeable",
+        "name": "Unshakeable",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/2bddcbc9f9959dab805eb7196c8112ce9dc68b09766c8193ab499b1870e44ac7.svg",
+        "simple_icon_raster_url": "content-assets/1f51d59934543176d8b585c4e5a62d77ca3677c6e26ae4da74b1b639f9091b5e.png",
+        "complex_icon_static_url": "content-assets/7e51bb1c1a458e2328130a9559787bfc4e2fd47ea14640a6b1662786b0908e00.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 2000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "2,000 hours",
+        "icon": "a17d974449dbfd13f016cce4a4aa8ed1",
+        "requirement_description": "2,000 hours"
+      },
+      {
+        "key": "eternal",
+        "name": "Eternal",
+        "rarity": 5,
+        "simple_icon_url": "content-assets/457ce4e657f0ced23197891cc3d75b7de29cafa065cdb8cbb81060ac0e63b07f.svg",
+        "simple_icon_raster_url": "content-assets/8a62ba720addf7584d3e7f82170104e6a2b35aea4aba5ffc7260cfd706f40c37.png",
+        "complex_icon_static_url": "content-assets/95fa54ec361bd5b8694f6510e1ac125af51f88dfc628b1a338e96d9aa2bc1d75.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "5,000+ hours",
+        "icon": "d15fdc75c449b9dc2083842d184875ef",
+        "requirement_description": "5,000+ hours"
+      }
+    ],
+    "leveling_instructions": "Play detectable PC games with this instance open to level up this badge."
+  },
+  "18": {
+    "badge_id": 18,
+    "name": "Account Age",
+    "metric": "account_years",
+    "tiers": [
+      {
+        "key": "one_year",
+        "name": "Seed",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/465f6cc202c60d0e250f986fa035ed461e275adddbf875106089527a2c16ef2c.svg",
+        "simple_icon_raster_url": "content-assets/8da9339b9d405f0194947e607c839b1bd43436211e5bf07fe7f4ce005578e9e4.png",
+        "complex_icon_static_url": "content-assets/a020845b216d1b7ab5d32a0b65c7f706a87342546d5283b4fb7f7661e6adb5f8.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 1,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "1 year",
+        "icon": "ce18e48a15a172cfe1c86a7615557eaa",
+        "requirement_description": "1 year"
+      },
+      {
+        "key": "two_years",
+        "name": "Sprout",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/2f2f1d83c3abedbbd2346212343e3f45bd215ddd3d97fdf2272f3c3b4ea52dae.svg",
+        "simple_icon_raster_url": "content-assets/f12847ebadd9022c3d67e5b31b5f3608e1ff48a222528fb6059e0fd310fc71b7.png",
+        "complex_icon_static_url": "content-assets/3ff20822dba22989ca46be81b506b0f2ae05f44a95a170d45c762d77368f81f2.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 2,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "2 years",
+        "icon": "31e534e1483621e5abdd691717585650",
+        "requirement_description": "2 years"
+      },
+      {
+        "key": "three_years",
+        "name": "Sapling",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/b9f15d9592f7a4fab4f7295e59bbc9cf45cc4787505eafc17e1586e499d4b64a.svg",
+        "simple_icon_raster_url": "content-assets/dccc28b53d39406e65e76541d6b940b23a9d31ef418100d77d6eb30c4adb9098.png",
+        "complex_icon_static_url": "content-assets/b816ac430fe6fdb8a0ecf20def1ee54b2a46f202fed002d13b9c917d5deb6fec.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 3,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "3 years",
+        "icon": "328ca7f918561989c39491208c86959c",
+        "requirement_description": "3 years"
+      },
+      {
+        "key": "four_years",
+        "name": "Bud",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/5a8088ae64ce072f086049e862b9c6fb94a34be8c1de85870cebd4a7db0596ff.svg",
+        "simple_icon_raster_url": "content-assets/7c0a10981060861722c0216fd6c01a9fd8b10accbd3d6a04dcde275896e82e8b.png",
+        "complex_icon_static_url": "content-assets/1b97c4b817127ff54ac2247f6503d61dc01a90dfb312035ca5b5a9a94844b3b2.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 4,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "4 years",
+        "icon": "d87c5eeb5c8619a838be010c191159df",
+        "requirement_description": "4 years"
+      },
+      {
+        "key": "five_years",
+        "name": "Blossom",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/6b236652251f52ab8d0183934bbcd2f3246ac531cecb8d86569d24cbdc8eb1f4.svg",
+        "simple_icon_raster_url": "content-assets/52c374af536a4621a65503b4350f7459e3d00f3ed4e3b941c3902c0d9af45f4a.png",
+        "complex_icon_static_url": "content-assets/d6a94d8528bcaf8cf3270833f886acecb5b8836d4b522c940b4378a4cd99fc1c.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "5 years",
+        "icon": "7f7325bf195ba1abc0a073cc455c5725",
+        "requirement_description": "5 years"
+      },
+      {
+        "key": "six_years",
+        "name": "Redwood",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/018ba2a1ebd7321265af6496af5f131d59002c4f90eadcf93d0da023dea486fa.svg",
+        "simple_icon_raster_url": "content-assets/4a3f89677b6a5dbcface45d639af5621a9e44a5258b961acc90701b97bb00cba.png",
+        "complex_icon_static_url": "content-assets/364b2ccf120bbf05d55c7dfdd68f80870f70d3466af8c9d8ed6215848b052e46.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 6,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "6 years",
+        "icon": "e85ba70871aa5cc5e40286994a1a8c08",
+        "requirement_description": "6 years"
+      },
+      {
+        "key": "seven_years",
+        "name": "Sequoia",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/2a598969188c36a8292855ca82a6acd953b7adab398721a65bfd360f55eed26a.svg",
+        "simple_icon_raster_url": "content-assets/7c5a1b1ce27181145c7e37bf6ad323353c14e8db201cfa3cb336292ad9a5d03d.png",
+        "complex_icon_static_url": "content-assets/273839b70572100e40c68611c54463f9f45114b7a89249b96c7a4bfcc8327905.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 7,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "7 years",
+        "icon": "68031cedb2f419765271a0385ea8641a",
+        "requirement_description": "7 years"
+      },
+      {
+        "key": "eight_years",
+        "name": "Bristlecone",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/5dc6789b3102d1d63b3a4e257bc0067555702116f392d54cd3f83c0c137e6e11.svg",
+        "simple_icon_raster_url": "content-assets/53b3a2b4307df9dfc05a4c9da977baa4a6fd822f5a3d24843f949d1c93398322.png",
+        "complex_icon_static_url": "content-assets/528f91735db7fd50ed9c95b65044f911663d8941379314d01c27b8fb230fb126.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 8,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "8 years",
+        "icon": "0ca13ae7763247a3eebe3c2c84ccaa8b",
+        "requirement_description": "8 years"
+      },
+      {
+        "key": "nine_years",
+        "name": "Stromatolite",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/3251cbd59d4b048fc5ea83890cfb78fe2e092865ebbf8eff61dcd861af4b5fc7.svg",
+        "simple_icon_raster_url": "content-assets/d30993594816cc6035041941291dc7a5862e55676ce85eef91f89fd0c59f2931.png",
+        "complex_icon_static_url": "content-assets/656dc3ca202956008e14cd1d3224f11674b372f670ffb45e22f395a48a4730e4.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 9,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "9 years",
+        "icon": "5b1cd1ee9688905a06269a0b7c80e329",
+        "requirement_description": "9 years"
+      },
+      {
+        "key": "ten_years",
+        "name": "Primordial",
+        "rarity": 5,
+        "simple_icon_url": "content-assets/895ded0aa669176a4c45b41f18f992ea1a762a57d99edab380377162d54851e5.svg",
+        "simple_icon_raster_url": "content-assets/1930d04a8a1d0aba6f97b19b7e7b87158ab154ebffd5468d6ada66671285968b.png",
+        "complex_icon_static_url": "content-assets/578e40321b1d048d8f6ee125f933c993d9ad52fb0518816d3e5302ec495973a0.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 10,
+            "unit": "years"
+          }
+        ],
+        "milestone_text": "10+ years",
+        "icon": "4bca63acd043d9d3ce6514e362598f73",
+        "requirement_description": "10+ years"
+      }
+    ],
+    "leveling_instructions": "Your badge follows the actual age of your account on this instance."
+  },
+  "19": {
+    "badge_id": 19,
+    "name": "Streaming",
+    "metric": "streamed_ms",
+    "tiers": [
+      {
+        "key": "newcomer",
+        "name": "Newcomer",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/c56b451e3bf04181182c2529e9bd3659e569ea80f582858090007f0752401b38.svg",
+        "simple_icon_raster_url": "content-assets/571a6f607289dfc034d5735ea020bb53f29e9d53dcc54ee852f9f070538ff73a.png",
+        "complex_icon_static_url": "content-assets/e3bec9e7d48c79f2c7424995592a85f0e103fa51e6a9b151a6d17d611c9027e1.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 1,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "1 hour",
+        "icon": "d1f987efa728754e4fc66ee7ec52e9aa",
+        "requirement_description": "1 hour"
+      },
+      {
+        "key": "fledgling",
+        "name": "Fledgling",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/2e25ba794f6f371ea0f52eb2d3c8fb2b04094a56f388515e13a9bd6d7949a018.svg",
+        "simple_icon_raster_url": "content-assets/3e1ec0a72ca812e53ecd53d55c18c2d9765cc89eee08b1e74f7e0bdbfe2e96a2.png",
+        "complex_icon_static_url": "content-assets/5bc109549867411b404808be65e7ca64d4142fe43dc40c59986244d62f400bea.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "5 hours",
+        "icon": "951c4bd9656c007c5f4c6616f6d230a8",
+        "requirement_description": "5 hours"
+      },
+      {
+        "key": "breakout",
+        "name": "Breakout",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/4e847b4dca20fbf1c56d3a47cac3c9204f02113c9d5a270ebebdf12909c75848.svg",
+        "simple_icon_raster_url": "content-assets/443707ffced738635bb0ee5c054544c67ec9dfab63b03e661bc1295d5399cac7.png",
+        "complex_icon_static_url": "content-assets/21b8d249afdf07418623f679c4899f08f8b400b36dee8c0640ce876b0027f81e.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 20,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "20 hours",
+        "icon": "33df438dbd683a108860667226612a5d",
+        "requirement_description": "20 hours"
+      },
+      {
+        "key": "standout",
+        "name": "Standout",
+        "rarity": 1,
+        "simple_icon_url": "content-assets/27d0e6939f13dcf113243fc9eac642b15e9764ad891e06c5ed78d45a17678582.svg",
+        "simple_icon_raster_url": "content-assets/522de4edcb75e0544633b9ccb55c58d672c4a2fa70a81231bd42bb56cd6555bd.png",
+        "complex_icon_static_url": "content-assets/29190ed5ba094118c4c3594978e0f5bb92beb55cdb9f0d0bc07d3f47b8377d8d.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 75,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "75 hours",
+        "icon": "4fcfb3f6842f479ac0e961839b3f892d",
+        "requirement_description": "75 hours"
+      },
+      {
+        "key": "trendsetter",
+        "name": "Trendsetter",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/af681483be2035f14b0f2bfe2e25a8944c97149172938888ca1008edbe037aad.svg",
+        "simple_icon_raster_url": "content-assets/9482ad3a1104986a4cce2979291c733eca0707f6218ddfb6ff36e32e3fd709e9.png",
+        "complex_icon_static_url": "content-assets/06b69da31f4d7800e1f5e6492912ac3c982f058bef2b63a7f59fec63c91c9a8d.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 150,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "150 hours",
+        "icon": "7afc2fd2643a3d0f6c4d35bde7287dfd",
+        "requirement_description": "150 hours"
+      },
+      {
+        "key": "headliner",
+        "name": "Headliner",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/e69a0c86a476c9782ea1d3e7b5ba308eec3d9d6a3eae6ab8af3180f67d16b468.svg",
+        "simple_icon_raster_url": "content-assets/2cf2a4ab39800a963efdb900b823dc8ccb23464434f3e11d329851ae566cac22.png",
+        "complex_icon_static_url": "content-assets/8a996cdb590ba957bad9c3d306844792a1d2bb35552d245f7f9d80879b75df5f.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 300,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "300 hours",
+        "icon": "ef291cefda03da61d0642560478348f5",
+        "requirement_description": "300 hours"
+      },
+      {
+        "key": "star",
+        "name": "Star",
+        "rarity": 2,
+        "simple_icon_url": "content-assets/06b6206db966635cf626651bdb94eacce5a23ab05dc7f600f7d31aa482b2058c.svg",
+        "simple_icon_raster_url": "content-assets/20e0b4ff7fc63681efe95082a69f9bfe7259f1485fa6fa6cebaf709336f42b90.png",
+        "complex_icon_static_url": "content-assets/54f39ff20bdd89d59288e41909344ef6d7d71f7d45d0b84e91acee34b6e973f3.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 500,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "500 hours",
+        "icon": "4f803e970f193b1dc7e860faf1db8b80",
+        "requirement_description": "500 hours"
+      },
+      {
+        "key": "sensation",
+        "name": "Sensation",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/1a3b9120ecd64c342083c37980b225d29ebf4544da6ab546c9268f87904c9dfe.svg",
+        "simple_icon_raster_url": "content-assets/7ceb7fc55dba1fd4c4c5a9acd8345e3b74bca789bf8503445f3bf89109ae47a4.png",
+        "complex_icon_static_url": "content-assets/47b8840e428a380b1e8da83b4b93cb6ebabc8d1a3582497096c3af3d46b33814.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 1000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "1,000 hours",
+        "icon": "1f74f486868a61cc6013fc5915c9c783",
+        "requirement_description": "1,000 hours"
+      },
+      {
+        "key": "visionary",
+        "name": "Visionary",
+        "rarity": 3,
+        "simple_icon_url": "content-assets/85f714b90ed3ceb1e00e1f2069bf3ebd564962fa940c92540061537a045e54ab.svg",
+        "simple_icon_raster_url": "content-assets/5fbabf24366e08c5f7a56219d7d39f29c41034b5bd091573600f07a904af0035.png",
+        "complex_icon_static_url": "content-assets/dea662017618e0a6986a9085d75b7a7feac1652f8d3afd63f26accb9e3b72b7f.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 2000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "2,000 hours",
+        "icon": "cc82117b69629b86e88ef20ad82d777d",
+        "requirement_description": "2,000 hours"
+      },
+      {
+        "key": "phenomenon",
+        "name": "Phenomenon",
+        "rarity": 5,
+        "simple_icon_url": "content-assets/61331d04b7a9542b38bfa59583360c0b9b93c6496a04f99c0ab37fa1d83ec58a.svg",
+        "simple_icon_raster_url": "content-assets/dd20ac476f0bb7ea9a553abc699c0d6b9854a3f802187e3bf9bf2e45c37a766a.png",
+        "complex_icon_static_url": "content-assets/ffeacf283c1e7772ae35dc4d9e2ad8be2135a2c75b363d0ef32124f535670508.svg",
+        "requirements": [
+          {
+            "progress_type": 1,
+            "threshold": 5000,
+            "unit": "hours"
+          }
+        ],
+        "milestone_text": "5,000+ hours",
+        "icon": "fc310df7c8726e133250ced3a962ccff",
+        "requirement_description": "5,000+ hours"
+      }
+    ],
+    "leveling_instructions": "Share your screen with at least one other member to level up this badge."
+  }
+}

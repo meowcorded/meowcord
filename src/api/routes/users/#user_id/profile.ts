@@ -6,6 +6,7 @@ import { Badge, Member, Relationship, User } from "@spacebar/database";
 import { broadcastUserUpdate, Config, DiscordApiErrors, emitEvent, FieldErrors, handleFile, instanceName, loadStaffRoles, staffBadgeRole, UserUpdateEvent } from "@spacebar/util";
 import { PartialConnectedAccountResponse, PrivateUserProjection, PublicUserProjection, RelationshipType, UserProfileModifySchema } from "@spacebar/schemas";
 
+import { earnedMilestoneBadges, milestones } from "@spacebar/api/util/utility/milestones";
 import { prideBadges } from "@spacebar/api/util/utility/prideBadges";
 
 import { isSubscriptionBadge } from "@spacebar/api/util/utility/profile";
@@ -98,7 +99,7 @@ router.get("/", route({ responses: { 200: { body: "UserProfileResponse" } } }), 
         : null;
 
     const badges = [];
-    const badgeIds = (user.badge_ids ?? []).filter((id) => !user.federated_instance || id !== STAFF_BADGE_ID);
+    const badgeIds = (user.badge_ids ?? []).filter((id) => !milestones[id] && (!user.federated_instance || id !== STAFF_BADGE_ID));
     if (badgeIds.length) badges.push(...(await Badge.find({ where: { id: In(badgeIds) } })));
     const badgeRole = user.federated_instance || user.badge_ids?.includes(STAFF_BADGE_ID) ? null : staffBadgeRole(user.id, await loadStaffRoles());
     if (badgeRole) {
@@ -126,10 +127,8 @@ router.get("/", route({ responses: { 200: { body: "UserProfileResponse" } } }), 
         premium_guild_since: null,
         profile_themes_experiment_bucket: 4,
         user_profile: profileMetadata(user),
-        badges: arrangeBadges(
-            badges.filter((badge) => !isSubscriptionBadge(badge)),
-            badgeSettings(user),
-        ).visible,
+        badges: arrangeBadges([...badges.filter((badge) => !isSubscriptionBadge(badge)), ...(!user.federated_instance ? earnedMilestoneBadges(user) : [])], badgeSettings(user))
+            .visible,
         guild_badges: [],
         widgets: user.profile_widgets ?? [],
         legacy_username: null,

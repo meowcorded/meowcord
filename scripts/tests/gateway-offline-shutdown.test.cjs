@@ -21,6 +21,7 @@ function harness(find = async () => ({ last_seen: new Date(0) })) {
             exports: module.exports,
             console: { log() {}, error: (...args) => errors.push(args) },
             require: (name) => {
+                if (name === "@spacebar/api/util/utility/activity") return { hasActivityWindow: () => false, recordActivity: async () => {} };
                 if (name.endsWith("/ProcessLifecycle")) return { ProcessLifecycle: lifecycle };
                 if (name === "../opcodes/PresenceUpdate")
                     return {

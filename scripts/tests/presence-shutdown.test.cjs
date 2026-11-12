@@ -48,6 +48,7 @@ function harness(update = async () => {}, broadcast = async () => {}) {
                 if (timer) timer.cancelled = true;
             },
             require: (name) => {
+                if (name === "@spacebar/api/util/utility/activity") return { hasActivityWindow: () => false, recordActivity: async () => {} };
                 if (name.endsWith("/ProcessLifecycle")) return { ProcessLifecycle: lifecycle };
                 if (name === "@spacebar/database")
                     return {

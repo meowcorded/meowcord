@@ -3,6 +3,7 @@ import { WebSocket, Payload } from "@spacebar/gateway";
 import { broadcastPresence, emitSessionsReplace, sanitizeActivities } from "@spacebar/util";
 import { ActivitySchema, PrivateStatus } from "@spacebar/schemas";
 import { check } from "./instanceOf";
+import { hasActivityWindow, recordActivity } from "@spacebar/api/util/utility/activity";
 import { ProcessLifecycle } from "@spacebar/util/util/ProcessLifecycle";
 
 const SettableStatuses = ["online", "idle", "dnd", "invisible"];
@@ -79,6 +80,8 @@ async function savePresenceOnce(this: WebSocket) {
             last_seen: this.session.last_seen,
         },
     );
+    if (hasActivityWindow(this.user_id) || this.session.activities?.some((activity) => activity.type === 0))
+        recordActivity(this.user_id).catch((error) => console.error("[Activity] presence update failed", error));
     await broadcastPresence(this.user_id);
     // Your own sessions list is how your client learns the status of each of your devices (the platform indicators on
     // your own profile read it), and it only changes when the server sends it again.

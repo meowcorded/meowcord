@@ -1,0 +1,5 @@
+# Activity badges
+
+Account Age follows UTC creation anniversaries, including leap years, while Streaming, Game Time and Game Variety use persisted totals from authenticated sessions. Streaming requires an unpaused share and another connected viewer, and recognised game presence requires a compatible client because a browser cannot inspect local processes. Offline gaps and overlapping sessions do not multiply elapsed time.
+
+The account stores aggregate durations, milestone timestamps and at most 100 game identifiers hashed with an instance secret in `activity.key`. The native directory displays requirements, progress and ten artwork tiers per family without changing data-sharing consent. `assets/badges/sources.json` records the original Discord CDN URLs for the bundled artwork, which retains its original ownership and is not licensed by the project’s AGPL grant. Run `bun test scripts/tests/activity.test.cjs scripts/tests/profile-badges.test.cjs` for progression and directory checks, with `ACTIVITY_POSTGRES_URL` set to include PostgreSQL persistence checks.

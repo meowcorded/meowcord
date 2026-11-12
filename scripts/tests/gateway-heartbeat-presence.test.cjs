@@ -10,6 +10,7 @@ function harness() {
     const broadcasts = [];
     const module = { exports: {} };
     const mocks = {
+        "@spacebar/api/util/utility/activity": { hasActivityWindow: () => false, recordActivity: async () => {} },
         typeorm: {},
         "@spacebar/gateway": { OPCODES: { SetQoS: 40 } },
         "@spacebar/database": {

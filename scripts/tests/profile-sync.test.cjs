@@ -111,6 +111,7 @@ const harness = () => {
                 };
             if (name === "typeorm") return { In: (ids) => ids };
             if (name === "@spacebar/api/middlewares") return { route: (options) => options };
+            if (name === "@spacebar/api/util/utility/milestones") return { milestones: {}, earnedMilestoneBadges: () => [] };
             if (name === "@spacebar/database")
                 return {
                     User: {

@@ -3,6 +3,7 @@ import { isFinalClose, releaseDispatchBuffers, WebSocket } from "@spacebar/gatew
 import { broadcastPresence, emitEvent, emitSessionsReplace, FederatedVoice, VoiceStateUpdateEvent } from "@spacebar/util";
 import { ProcessLifecycle } from "@spacebar/util/util/ProcessLifecycle";
 import { openConnections } from "./Connection";
+import { hasActivityWindow, recordActivity } from "@spacebar/api/util/utility/activity";
 import { cancelPendingPresence } from "../opcodes/PresenceUpdate";
 
 const pendingOffline = new Map<ReturnType<typeof setTimeout>, () => Promise<void>>();
@@ -55,6 +56,7 @@ export async function Close(this: WebSocket, code: number, reason: Buffer) {
                 )
                     return;
                 await Session.update({ user_id: this.user_id, session_id: authSessionId }, { status: "offline", activities: [], client_status: {} });
+                if (hasActivityWindow(this.user_id)) await recordActivity(this.user_id).catch((error) => console.error("[Activity] final update failed", error));
                 await emitSessionsReplace(this.user_id);
                 await broadcastPresence(this.user_id);
             } catch (e) {

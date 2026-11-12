@@ -36,6 +36,7 @@ router.post(
 );
 
 router.get("/:badge_id", setCacheControl, async (req: Request, res: Response) => {
+    res.removeHeader("Set-Cookie");
     const { badge_id } = req.params as { [key: string]: string };
     if (!/^[\w-]+\.png$/.test(badge_id)) return setCacheControlNotFound(req, res);
     const key = `badge-icons/${badge_id}`;

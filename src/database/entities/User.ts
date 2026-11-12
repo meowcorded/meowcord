@@ -40,6 +40,7 @@ export interface AccountPreferences {
     email_categories?: Record<string, boolean>;
     email_settings_initialized?: boolean;
     notification_flags?: number;
+    activity_progress?: { played_ms: number; streamed_ms: number; games: string[]; last_credit: number; awards: Record<string, string> };
     badge_settings?: { display_order?: string[]; hidden_badges?: string[] };
     harvest?: HarvestRecord;
 }

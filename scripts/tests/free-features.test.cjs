@@ -62,6 +62,7 @@ test("profile response keeps free feature entitlements and custom badges without
         },
         typeorm: { In: (x) => x },
         "@spacebar/api/middlewares": { route: (x) => x },
+        "@spacebar/api/util/utility/milestones": { milestones: {}, earnedMilestoneBadges: () => [] },
         "@spacebar/api/util": { profileMetadata: () => ({ theme_colors: [123, 456] }), STAFF_BADGE_ID: "1", ensureStaffBadge: async () => ({ icon: "staff" }) },
         "@spacebar/database": {
             User: { createQueryBuilder: () => query },
@@ -80,7 +81,11 @@ test("profile response keeps free feature entitlements and custom badges without
             prideBadges: () => [{ id: "8000000000000000001", icon: "pride_rainbow" }],
         },
         "@spacebar/api/util/utility/profile": utilities(),
-        "@spacebar/api/util/utility/badgeSettings": load("src/api/util/utility/badgeSettings.ts", { "@spacebar/util": {}, "./staffBadge": { STAFF_BADGE_ID: "1" }, "./prideBadges": { PRIDE_BADGES: [] } }),
+        "@spacebar/api/util/utility/badgeSettings": load("src/api/util/utility/badgeSettings.ts", {
+            "@spacebar/util": {},
+            "./staffBadge": { STAFF_BADGE_ID: "1" },
+            "./prideBadges": { PRIDE_BADGES: [] },
+        }),
         "@spacebar/api/util/handlers/Application": {},
     });
     let result;
