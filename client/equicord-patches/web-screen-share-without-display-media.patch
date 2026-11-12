@@ -6,7 +6,7 @@ diff --git a/src/plugins/webScreenShare.browser/index.tsx b/src/plugins/webScree
  const logger = new Logger("VencordScreenShare");
  
 -const getDisplayMedia = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
-+const getDisplayMedia = navigator.mediaDevices?.getDisplayMedia?.bind(navigator.mediaDevices);
++const getDisplayMedia = typeof navigator.mediaDevices?.getDisplayMedia === "function" ? navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices) : undefined;
  
  function openScreenSharePicker(options: DisplayMediaStreamOptions) {
      return new Promise<MediaStream>((resolve, reject) => {
