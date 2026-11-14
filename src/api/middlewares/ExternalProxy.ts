@@ -16,7 +16,15 @@ export async function ExternalProxy(req: Request, res: Response) {
     }
 }
 
+// What comes back is served from this origin, so nothing that can carry script:
+// image/svg+xml opened on its own runs its <script> here, next to the client's token.
+// The same list and policy the CDN uses for uploads (cdn/util/responseSafety.ts).
+const PROXIED_MEDIA_TYPE = /^(image\/(png|jpeg|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon)|video\/[\w.+-]+|audio\/[\w.+-]+)(;|$)/i;
+const PROXIED_CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'unsafe-inline'; frame-ancestors 'none'";
+
 async function serveExternalProxy(req: Request, res: Response) {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Content-Security-Policy", PROXIED_CONTENT_SECURITY_POLICY);
     const [, , hash, ...rest] = req.originalUrl.split("?")[0].split("/");
     const path = rest.join("/");
     if (!hash || !verifyExternalPath(hash, path)) return res.status(403).send("Invalid signature");
@@ -70,7 +78,7 @@ async function serveExternalProxy(req: Request, res: Response) {
         );
         if (!upstream.ok) return res.status(upstream.status).send(`Media proxy responded with ${upstream.status}`);
         const type = upstream.headers.get("content-type") ?? "";
-        if (!/^(image|video|audio)\//.test(type)) return res.status(415).send("Unsupported media type");
+        if (!PROXIED_MEDIA_TYPE.test(type)) return res.status(415).send("Unsupported media type");
         const body = Buffer.from(await upstream.arrayBuffer());
         res.status(upstream.status);
         for (const header of PASSTHROUGH_HEADERS) {
