@@ -82,27 +82,41 @@ ${final ? 1 : 0}`);
   var sw = self;
   var CACHE_BYTES = 256 * 1024 * 1024;
   var ASK_TIMEOUT_MS = 5000;
+  var POSTER_TIMEOUT_MS = 20000;
   var entries = new BoundedMap(2000);
   var files = new Map;
   var posters = new BoundedMap(64);
-  var ask = async (message, clientId = "") => {
+  var ask = async (message, clientId = "", timeoutMs = ASK_TIMEOUT_MS) => {
     const own = clientId ? await sw.clients.get(clientId) : undefined;
     const windows = own ? [own] : await sw.clients.matchAll({ type: "window", includeUncontrolled: true });
     if (!windows.length)
       return null;
     return new Promise((resolve) => {
       let left = windows.length;
-      const timer = setTimeout(() => resolve(null), ASK_TIMEOUT_MS);
+      const ports = [];
+      const finish = (answer) => {
+        clearTimeout(timer);
+        for (const port of ports)
+          port.close();
+        resolve(answer);
+      };
+      const timer = setTimeout(() => finish(null), timeoutMs);
       for (const client of windows) {
         const channel = new MessageChannel;
+        ports.push(channel.port1);
         channel.port1.onmessage = (event) => {
           const answer = event.data;
           if (!answer && --left > 0)
             return;
-          clearTimeout(timer);
-          resolve(answer);
+          finish(answer);
         };
-        client.postMessage(message, [channel.port2]);
+        try {
+          client.postMessage(message, [channel.port2]);
+        } catch {
+          channel.port1.close();
+          if (--left <= 0)
+            finish(null);
+        }
       }
     });
   };
@@ -134,20 +148,20 @@ ${final ? 1 : 0}`);
     }
     return blob;
   };
-  var missing = () => new Response("This content is no longer available.", {
+  var missing = (reason) => new Response("This content is no longer available.", {
     status: 404,
-    headers: { "Content-Type": "text/plain; charset=utf-8" }
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-E2EE-Error": reason }
   });
   var poster = async (path, entry, blob, clientId) => {
     let pending = posters.get(path);
     if (!pending) {
-      pending = ask({ type: "fosscord-e2ee-poster", blob, content_type: entry.content_type }, clientId);
+      pending = ask({ type: "fosscord-e2ee-poster", blob, content_type: entry.content_type }, clientId, POSTER_TIMEOUT_MS);
       posters.set(path, pending);
       pending.then((image) => image || posters.delete(path));
     }
     const image = await pending;
     if (!image)
-      return missing();
+      return missing("preview-unavailable");
     return new Response(image, {
       headers: {
         "Content-Type": image.type || "image/jpeg",
@@ -163,7 +177,7 @@ ${final ? 1 : 0}`);
     if (!entry) {
       entry = await ask({ type: "fosscord-e2ee-file", path }) ?? undefined;
       if (!entry)
-        return missing();
+        return missing("file-key-unavailable");
       entries.set(path, entry);
     }
     let blob;
@@ -171,7 +185,7 @@ ${final ? 1 : 0}`);
       blob = await plaintext(path, entry);
     } catch (error) {
       console.error("[e2ee] couldn't decrypt an attachment", error);
-      return missing();
+      return missing("ciphertext-unavailable-or-invalid");
     }
     if (url.searchParams.has("format") && entry.content_type.startsWith("video/"))
       return poster(path, entry, blob, clientId);

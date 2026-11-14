@@ -7,6 +7,11 @@ const compile = (file) =>
     ts.transpileModule(fs.readFileSync(file, "utf8"), {
         compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText;
+const network = (() => {
+    const module = { exports: {} };
+    vm.runInNewContext(compile("client/e2ee/src/network.ts"), { module, exports: module.exports, Error });
+    return module.exports;
+})();
 const flush = async () => {
     for (let i = 0; i < 60; i++) await Promise.resolve();
 };
@@ -110,9 +115,10 @@ test("failed member requests retry after a bounded delay, and navigation cancels
     assert.equal(calls, 2);
     assert.equal(retries, 1);
 });
-function startupHarness({ token = "stored-token" } = {}) {
+function startupHarness({ token = "stored-token", initError = null } = {}) {
     const timers = [];
     let now = 100000;
+    let initAttempts = 0;
     const module = { exports: {} };
     const worker = deferred();
     let requested;
@@ -124,11 +130,18 @@ function startupHarness({ token = "stored-token" } = {}) {
             this.locked = false;
         }
         async init(id) {
+            if (initError && initAttempts++ === 0) throw initError;
             this.userId = id;
         }
         onUnlock() {}
         onWipe() {}
         onChange() {}
+        invalidateAll() {
+            this.invalidated = (this.invalidated ?? 0) + 1;
+        }
+        async refresh() {
+            this.refreshed = (this.refreshed ?? 0) + 1;
+        }
         isEncrypted() {
             return true;
         }
@@ -145,7 +158,13 @@ function startupHarness({ token = "stored-token" } = {}) {
         verify: async (_key, message) => message === "self-test",
     };
     const ui = { pause() {}, refresh() {}, fail() {}, unlockSnoozed: () => false };
-    const window = {};
+    const listeners = {};
+    const window = {
+        addEventListener(type, listener) {
+            (listeners[type] ??= []).push(listener);
+        },
+    };
+    let retries = 0;
     const require = (name) => {
         if (name === "./attachments") return { createAttachments: () => ({ start() {}, ready: () => worker.promise }) };
         if (name === "./bytes")
@@ -155,7 +174,8 @@ function startupHarness({ token = "stored-token" } = {}) {
             };
         if (name === "./crypto") return crypto;
         if (name === "./engine") return { Engine };
-        if (name === "./hooks") return { createHooks: () => ({ retryAll() {} }) };
+        if (name === "./network") return network;
+        if (name === "./hooks") return { createHooks: () => ({ retryAll: () => retries++ }) };
         if (name === "./link") return { createLink: () => ({ start() {}, stop() {}, outgoing: () => null }) };
         if (name === "./ui") return { createUi: () => ui };
         if (name === "./store") return { browserStorage: { getItem: (key) => (key === "token" && token ? JSON.stringify(token) : null) } };
@@ -165,7 +185,7 @@ function startupHarness({ token = "stored-token" } = {}) {
     };
     const source =
         compile("client/e2ee/src/index.ts").replace(/tick\(\);\s*$/, "") +
-        "\nexports.test={start,startWhenReady,ready,api,logout:()=>{loggedOut=true;},setGateway:(value)=>{targets.gateway=value;},initialized:()=>initialized,setHttp:(value)=>{http=value;},settleReady:()=>{Object.assign(installed,{http:true,dispatcher:true,gateway:true});tick();}};";
+        "\nexports.test={start,startWhenReady,ready,api,logout:()=>{loggedOut=true;},setGateway:(value)=>{targets.gateway=value;},initialized:()=>initialized,setHttp:(value)=>{http=value;},settleReady:()=>{Object.assign(installed,{http:true,dispatcher:true,gateway:true});tick();},engine:()=>engine};";
     vm.runInNewContext(source, {
         module,
         exports: module.exports,
@@ -179,10 +199,13 @@ function startupHarness({ token = "stored-token" } = {}) {
             }
         },
         setTimeout: (fn, ms) => {
-            timers.push({ fn, ms });
-            return timers.length;
+            const timer = { fn, ms, at: now + ms, done: false };
+            timers.push(timer);
+            return timer;
         },
-        clearTimeout,
+        clearTimeout: (timer) => {
+            if (timer) timer.done = true;
+        },
         Buffer,
         URL,
         AbortSignal,
@@ -196,9 +219,19 @@ function startupHarness({ token = "stored-token" } = {}) {
     return {
         api: module.exports.test,
         worker,
+        engine: () => module.exports.test.engine(),
+        retries: () => retries,
+        fire: (type) => {
+            for (const listener of listeners[type] ?? []) listener({});
+        },
         requested: () => requested,
         advance: (ms) => {
             now += ms;
+            for (const timer of timers) {
+                if (timer.done || timer.at > now) continue;
+                timer.done = true;
+                timer.fn();
+            }
         },
     };
 }
@@ -211,6 +244,48 @@ test("text encryption settles without waiting for attachment worker control", as
     h.worker.resolve(true);
     await flush();
 });
+test("startup retries a transient request failure without disabling encryption", async () => {
+    const h = startupHarness({ initError: { status: 503 } });
+    await h.api.start("123");
+    assert.equal(h.api.initialized(), false);
+    h.advance(5000);
+    await flush();
+    assert.equal(h.api.initialized(), true);
+});
+
+test("startup retries a transport failure without disabling encryption", async () => {
+    const h = startupHarness({ initError: network.requestFailure(new TypeError("fetch failed")) });
+    await h.api.start("123");
+    assert.equal(h.api.initialized(), false);
+    h.advance(5000);
+    await flush();
+    assert.equal(h.api.initialized(), true);
+});
+
+test("browser online recovery invalidates keys and retries decryption", async () => {
+    const h = startupHarness();
+    await h.api.start("123");
+    h.api.settleReady();
+    assert.equal(h.api.initialized(), true);
+
+    h.fire("online");
+    assert.equal(h.engine().invalidated, 1);
+    assert.equal(h.retries(), 1);
+
+    h.advance(500);
+    await flush();
+    assert.equal(h.engine().refreshed, 1);
+});
+
+test("startup does not retry a non-transient failure without a status", async () => {
+    const h = startupHarness({ initError: new Error("broken self test") });
+    await h.api.start("123");
+    assert.equal(h.api.initialized(), false);
+    h.advance(10_000);
+    await flush();
+    assert.equal(h.api.initialized(), false);
+});
+
 test("encryption HTTP calls carry a finite native timeout with no hidden retries", async () => {
     const h = startupHarness();
     const result = await h.api.api.request("get", "/users/@me/e2ee");

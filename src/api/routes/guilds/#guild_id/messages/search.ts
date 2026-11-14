@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
-import { getSearchableChannels, searchMessages, searchResponse, searchTabs } from "@spacebar/api/util";
+import { getSearchableChannels, normalizeMessageSearchQuery, searchMessages, searchResponse, searchTabs } from "@spacebar/api/util";
 import { getPermission } from "@spacebar/util";
 
 const router: Router = Router({ mergeParams: true });
@@ -25,8 +25,9 @@ router.get(
     async (req: Request, res: Response) => {
         const { guild_id } = req.params as { [key: string]: string };
         (await getPermission(req.user_id, guild_id)).hasThrow("VIEW_CHANNEL");
-        const channels = await getSearchableChannels(req.user_id, guild_id, channelIdsOf(req.query.channel_id));
-        res.json(searchResponse(req.user_id, await searchMessages(req.user_id, channels, req.query)));
+        const query = normalizeMessageSearchQuery(req.query);
+        const channels = await getSearchableChannels(req.user_id, guild_id, channelIdsOf(query.channel_id));
+        res.json(searchResponse(req.user_id, await searchMessages(req.user_id, channels, query)));
     },
 );
 

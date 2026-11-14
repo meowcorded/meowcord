@@ -29,6 +29,22 @@ const list = (value: unknown): string[] => (value === undefined || value === nul
 
 const bool = (value: unknown) => (value === undefined ? undefined : value === true || value === "true");
 
+export function normalizeMessageSearchQuery(query: MessageSearchQuery): MessageSearchQuery {
+    const normalized = { ...query };
+
+    for (const key of ["has", "author_id", "author_type", "mentions", "channel_id"]) {
+        const bracketed = Object.keys(query).filter((name) => name.startsWith(`${key}[`) && /^\[\d*\]$/.test(name.slice(key.length)));
+
+        if (!bracketed.length) continue;
+
+        normalized[key] = [...list(query[key]), ...bracketed.flatMap((name) => list(query[name]))];
+
+        for (const name of bracketed) delete normalized[name];
+    }
+
+    return normalized;
+}
+
 const assertSearchQuery = (query: MessageSearchQuery) => {
     const errors = messageSearchErrors(query);
     if (Object.keys(errors).length) throw FieldErrors(errors);
@@ -73,6 +89,7 @@ export async function getSearchableChannels(userId: string, guildId: string | un
 }
 
 export async function searchMessages(userId: string, channels: Channel[], query: MessageSearchQuery) {
+    query = normalizeMessageSearchQuery(query);
     assertSearchQuery(query);
     const limit = Number(query.limit ?? 25);
     if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new HTTPError("limit must be between 1 and 100", 422);
