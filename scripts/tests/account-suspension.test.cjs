@@ -260,6 +260,7 @@ test("valid unauthenticated webhook token cannot send for suspended owner; rever
         "./Message": {},
         "./Interaction": {},
         "../utility/polls": {},
+        "../utility/tokenEquals": require("../../dist/api/util/utility/tokenEquals.js"),
         "@spacebar/database": {
             User: { findOne: async () => user },
             Webhook: { findOne: async () => webhook },

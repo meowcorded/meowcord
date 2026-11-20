@@ -1,4 +1,5 @@
 import { VoicePayload, WebRtcWebSocket } from "../util";
+import { tokenEquals } from "@spacebar/api/util/utility/tokenEquals";
 import { VoiceSessions } from "../util/VoiceSessions";
 
 export async function onResume(this: WebRtcWebSocket, data: VoicePayload) {
@@ -11,7 +12,8 @@ export async function onResume(this: WebRtcWebSocket, data: VoicePayload) {
         seq_ack?: number;
     };
     const previous = VoiceSessions.find(server_id, session_id);
-    if (!previous || previous.token !== token || previous.sessionEnded || previous.resumedBy || !previous.webRtcClient) return this.close(4006, "Session no longer valid");
+    if (!previous || !tokenEquals(token, previous.token) || previous.sessionEnded || previous.resumedBy || !previous.webRtcClient)
+        return this.close(4006, "Session no longer valid");
     if (previous.federation?.sender !== this.federation?.sender) return this.close(4006, "Session no longer valid");
     if (!(await VoiceSessions.isValid(previous))) {
         await VoiceSessions.end(previous);

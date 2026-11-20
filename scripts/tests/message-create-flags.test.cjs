@@ -73,6 +73,7 @@ test("a webhook message keeps only the flags a webhook may set", async () => {
                 ValidateName: () => {},
             },
             "@spacebar/database": { Webhook: { findOne: async () => webhook } },
+            "../utility/tokenEquals": require("../../dist/api/util/utility/tokenEquals.js"),
             "./Message": {
                 handleMessage: async (opts) => {
                     captured = opts;

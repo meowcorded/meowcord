@@ -1,4 +1,5 @@
 import { scheduleSavedPoll } from "../utility/polls";
+import { tokenEquals } from "../utility/tokenEquals";
 import { Request, Response } from "express";
 import { HTTPError } from "lambert-server/HTTPError";
 import { MoreThan } from "typeorm";
@@ -132,7 +133,7 @@ export const executeWebhook = async (req: Request, res: Response) => {
         const message = original ? await editInteractionMessage(interaction, original, data) : await createInteractionMessage(interaction, data, { followup: true });
         return res.json(message.toJSON());
     }
-    if (webhook.token !== webhook_token) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
+    if (!tokenEquals(webhook.token, webhook_token)) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
     await assertWebhookOwnerActive(webhook);
     applyWebhookComponents(webhook, body, req.query.with_components === "true");
 

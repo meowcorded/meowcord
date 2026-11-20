@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { tokenEquals } from "./tokenEquals";
 
 const TTL = 10 * 60 * 1000;
 const codes = new Map<string, { code: string; expires: number; attempts: number }>();
@@ -14,7 +15,7 @@ export const EmailChange = {
     verifyCode(user_id: string, code: string) {
         const entry = codes.get(user_id);
         if (!entry || entry.expires < Date.now()) return undefined;
-        if (entry.code !== code.trim()) {
+        if (!tokenEquals(code.trim(), entry.code)) {
             if (++entry.attempts >= 5) codes.delete(user_id);
             return undefined;
         }
@@ -26,7 +27,7 @@ export const EmailChange = {
 
     consumeToken(user_id: string, token: string) {
         const entry = tokens.get(user_id);
-        if (!entry || entry.expires < Date.now() || entry.token !== token) return false;
+        if (!entry || entry.expires < Date.now() || !tokenEquals(token, entry.token)) return false;
         tokens.delete(user_id);
         return true;
     },

@@ -3,6 +3,7 @@ import { route, parsePayloadJson } from "@spacebar/api/middlewares";
 import { InteractionCallbacksSchema } from "@spacebar/schemas";
 import { ApiError, DiscordApiErrors, findInteraction } from "@spacebar/util";
 import { boundedMessageUpload } from "@spacebar/api/util/utility/boundedUpload";
+import { tokenEquals } from "@spacebar/api/util/utility/tokenEquals";
 import { processInteractionCallback } from "@spacebar/api/util/handlers/Interaction";
 
 const router = Router({ mergeParams: true });
@@ -11,7 +12,7 @@ const upload = boundedMessageUpload();
 
 const pendingFor = async (req: Request) => {
     const interaction = await findInteraction(req.params.interaction_id as string);
-    if (!interaction || interaction.token !== req.params.interaction_token) throw DiscordApiErrors.UNKNOWN_INTERACTION;
+    if (!interaction || !tokenEquals(interaction.token, req.params.interaction_token)) throw DiscordApiErrors.UNKNOWN_INTERACTION;
     if (interaction.acknowledged) throw new ApiError("Interaction has already been acknowledged.", 40060, 400);
     return interaction;
 };

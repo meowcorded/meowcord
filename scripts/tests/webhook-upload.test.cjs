@@ -44,6 +44,7 @@ function load() {
             getInteractionByToken: () => undefined,
         },
         "@spacebar/api/util/handlers/Webhook": {},
+        "@spacebar/api/util/utility/tokenEquals": require("../../dist/api/util/utility/tokenEquals.js"),
     };
     const transpile = (file) => {
         const module = { exports: {} };

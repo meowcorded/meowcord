@@ -11,6 +11,7 @@ import { ChannelType, PublicMessage, WebhookMessageEditSchema } from "@spacebar/
 
 import { componentMessageErrors } from "@spacebar/api/util/handlers/ComponentValidation";
 import { FieldErrors } from "@spacebar/util";
+import { tokenEquals } from "@spacebar/api/util/utility/tokenEquals";
 
 const router = Router({ mergeParams: true });
 
@@ -30,7 +31,7 @@ async function interactionMessage(req: Request) {
 async function assertValidWebhookAuth(webhookId: string, webhookToken: string, messageId: string) {
     const webhook = await Webhook.findOne({ where: { id: webhookId } });
     if (!webhook) throw DiscordApiErrors.UNKNOWN_WEBHOOK;
-    if (webhook.token != webhookToken) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
+    if (!tokenEquals(webhook.token, webhookToken)) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
 
     await assertWebhookOwnerActive(webhook);
 

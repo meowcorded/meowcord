@@ -5,6 +5,7 @@ import { DiscordApiErrors, emitEvent, getInteractionByToken, WebhooksUpdateEvent
 import { applyWebhookUpdate, executeWebhook, webhookToJSON } from "@spacebar/api/util/handlers/Webhook";
 import type { WebhookUpdateSchema } from "@spacebar/schemas";
 import { boundedMessageUpload } from "@spacebar/api/util/utility/boundedUpload";
+import { tokenEquals } from "@spacebar/api/util/utility/tokenEquals";
 
 const router = Router({ mergeParams: true });
 
@@ -40,7 +41,7 @@ router.get(
             throw DiscordApiErrors.UNKNOWN_WEBHOOK;
         }
 
-        if (webhook.token !== webhook_token) {
+        if (!tokenEquals(webhook.token, webhook_token)) {
             throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
         }
 
@@ -63,7 +64,7 @@ router.post(
             if (!(await getInteractionByToken(webhook_id, webhook_token))?.acknowledged) throw DiscordApiErrors.UNKNOWN_WEBHOOK;
             return next();
         }
-        if (webhook.token !== webhook_token) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
+        if (!tokenEquals(webhook.token, webhook_token)) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
         next();
     },
     messageUpload,
@@ -123,7 +124,7 @@ router.delete(
         });
 
         if (!webhook) throw DiscordApiErrors.UNKNOWN_WEBHOOK;
-        if (webhook.token !== webhook_token) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
+        if (!tokenEquals(webhook.token, webhook_token)) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
 
         const channel_id = webhook.channel_id;
         await Webhook.delete({ id: webhook_id });
@@ -172,7 +173,7 @@ router.patch(
         });
 
         if (!webhook) throw DiscordApiErrors.UNKNOWN_WEBHOOK;
-        if (webhook.token != webhook_token) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
+        if (!tokenEquals(webhook.token, webhook_token)) throw DiscordApiErrors.INVALID_WEBHOOK_TOKEN_PROVIDED;
 
         const channel_id = webhook.channel_id;
         await applyWebhookUpdate(webhook, body, false);
