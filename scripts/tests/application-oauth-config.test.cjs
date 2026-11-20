@@ -58,6 +58,7 @@ const fixture = (tags = ["base", "stale", "older"]) => {
             }),
         },
         "@spacebar/database": {
+            User: { findOneOrFail: async () => ({ id: "owner", totp_secret: "" }) },
             Application: {
                 findOneOrFail: async () => app,
                 getRepository: () => ({

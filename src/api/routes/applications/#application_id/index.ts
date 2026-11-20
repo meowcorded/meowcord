@@ -68,7 +68,8 @@ router.patch(
 
         if (app.owner.id != req.user_id) throw DiscordApiErrors.ACTION_NOT_AUTHORIZED_ON_APPLICATION;
 
-        if (app.owner.totp_secret && (!req.body.code || !(await throttledCodeAttempt(req.user_id, () => verifyTotp(app.owner.totp_secret, req.body.code)))))
+        const { totp_secret } = await User.findOneOrFail({ where: { id: req.user_id }, select: { id: true, totp_secret: true } });
+        if (totp_secret && (!req.body.code || !(await throttledCodeAttempt(req.user_id, () => verifyTotp(totp_secret, req.body.code)))))
             throw new HTTPError(req.t("auth:login.INVALID_TOTP_CODE"), 60008);
 
         if (body.name?.trim() == "") {
@@ -223,7 +224,8 @@ router.post(
         });
         if (app.owner.id != req.user_id) throw DiscordApiErrors.ACTION_NOT_AUTHORIZED_ON_APPLICATION;
 
-        if (app.owner.totp_secret && (!req.body.code || !(await throttledCodeAttempt(req.user_id, () => verifyTotp(app.owner.totp_secret, req.body.code)))))
+        const { totp_secret } = await User.findOneOrFail({ where: { id: req.user_id }, select: { id: true, totp_secret: true } });
+        if (totp_secret && (!req.body.code || !(await throttledCodeAttempt(req.user_id, () => verifyTotp(totp_secret, req.body.code)))))
             throw new HTTPError(req.t("auth:login.INVALID_TOTP_CODE"), 60008);
         if (app.bot) {
             const memberships = await Member.find({

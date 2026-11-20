@@ -43,6 +43,7 @@ const fixture = (tags = ["base", "stale", "older"]) => {
             toOwnedApplication: (app) => ({ id: app.id, tags: [...app.tags] }),
         },
         "@spacebar/database": {
+            User: { findOneOrFail: async () => ({ id: "owner", totp_secret: "" }) },
             Application: {
                 findOneOrFail: async () => app,
                 getRepository: () => ({

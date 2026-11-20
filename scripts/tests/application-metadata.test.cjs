@@ -81,6 +81,7 @@ const fixture = ({ fail, bot = true } = {}) => {
             toOwnedApplication: (app) => ({ id: app.id, description: app.description }),
         },
         "@spacebar/database": {
+            User: { findOneOrFail: async () => ({ id: "owner", totp_secret: "" }) },
             Application: { findOneOrFail: async () => app, getRepository: () => repository },
         },
         "@spacebar/util": {
