@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
 import { route } from "@spacebar/api/middlewares";
-import { e2eeDevicesOf, E2eeErrors } from "@spacebar/api/util";
+import { checkContactSpam, e2eeDevicesOf, E2eeErrors, enforceQuarantineDm } from "@spacebar/api/util";
 import { Channel, Recipient, Relationship, User } from "@spacebar/database";
 import { ChannelDeleteEvent, ChannelRecipientAddEvent, ChannelUpdateEvent, Config, DiscordApiErrors, DmChannelDTO, emitEvent } from "@spacebar/util";
 import { ChannelType, MessageType, PublicUserProjection } from "@spacebar/schemas";
@@ -109,20 +109,24 @@ router.put(
                 return res.status(400).json({ code: E2eeErrors.RECIPIENT_NO_DEVICES.code, message: E2eeErrors.RECIPIENT_NO_DEVICES.message, user_ids: [user_id] });
         }
 
-        if (channel.type !== ChannelType.GROUP_DM) {
-            const recipients = [...new Set([...(channel.recipients?.map((r) => r.user_id) || []), user_id])];
+        const members = channel.recipients?.map((r) => r.user_id) ?? [];
+        if (channel.type === ChannelType.GROUP_DM && members.includes(user_id)) throw DiscordApiErrors.INVALID_RECIPIENT;
+        const others = members.filter((id) => id !== user_id);
+        const blocked = await Relationship.blockedAmong(user_id, others);
+        if (blocked.size) throw DiscordApiErrors.CANNOT_MESSAGE_USER;
+        const { maxGroupDmRecipients, maxStaffGroupDmRecipients } = Config.get().limits.channel;
+        const limit = req.rights?.has("BYPASS_RATE_LIMITS") ? Math.max(maxGroupDmRecipients, maxStaffGroupDmRecipients ?? 0) : maxGroupDmRecipients;
+        const recipients = [...new Set([...members, user_id])];
+        if (recipients.length > limit) throw DiscordApiErrors.MAXIMUM_NUMBER_OF_RECIPIENTS_REACHED.withParams(String(limit));
+        if (!req.user_bot && user_id !== req.user_id) {
+            await checkContactSpam({ user_id: req.user_id, target_id: user_id, kind: "dm", rights: req.rights, federated: !!req.user?.federated_instance, account: req.user });
+            await enforceQuarantineDm({ user_id: req.user_id, federated: !!req.user?.federated_instance, rights: req.rights });
+        }
 
+        if (channel.type !== ChannelType.GROUP_DM) {
             const new_channel = await Channel.createDMChannel(recipients, req.user_id);
             return res.status(201).json(new_channel);
         } else {
-            if (channel.recipients?.map((r) => r.user_id).includes(user_id)) {
-                throw DiscordApiErrors.INVALID_RECIPIENT; //TODO is this the right error?
-            }
-            if (await Relationship.isBlockedBetween(req.user_id, user_id)) throw DiscordApiErrors.CANNOT_MESSAGE_USER;
-            const { maxGroupDmRecipients, maxStaffGroupDmRecipients } = Config.get().limits.channel;
-            const limit = req.rights?.has("BYPASS_RATE_LIMITS") ? Math.max(maxGroupDmRecipients, maxStaffGroupDmRecipients ?? 0) : maxGroupDmRecipients;
-            if ((channel.recipients?.length ?? 0) >= limit) throw DiscordApiErrors.MAXIMUM_NUMBER_OF_RECIPIENTS_REACHED.withParams(String(limit));
-
             channel.recipients?.push(Recipient.create({ channel_id: channel_id, user_id: user_id }));
             await channel.save();
 
