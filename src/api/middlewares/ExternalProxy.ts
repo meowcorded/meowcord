@@ -2,12 +2,30 @@ import { Config, corsProxyUrl, extractVideoFrame, fetchPublicUrl, reserveVideoFr
 import { Request, Response } from "express";
 
 const MAX_SIZE = 50 * 1024 * 1024;
-const PASSTHROUGH_HEADERS = ["content-type", "content-length", "content-range", "accept-ranges", "last-modified", "etag"];
+const PASSTHROUGH_HEADERS = ["content-range", "accept-ranges", "last-modified", "etag"];
+const MEDIA_TYPES = new Set([
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/avif",
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "audio/mpeg",
+    "audio/mp4",
+    "audio/ogg",
+    "audio/wav",
+    "audio/webm",
+    "audio/flac",
+    "audio/aac",
+]);
+const SANDBOX_POLICY = "sandbox; default-src 'none'";
 
 let active = 0;
 
 export async function ExternalProxy(req: Request, res: Response) {
-    if (active >= 32) return res.status(503).send("Media proxy is busy");
+    if (active >= 8) return res.status(503).send("Media proxy is busy");
     active++;
     try {
         return await serveExternalProxy(req, res);
@@ -16,15 +34,7 @@ export async function ExternalProxy(req: Request, res: Response) {
     }
 }
 
-// What comes back is served from this origin, so nothing that can carry script:
-// image/svg+xml opened on its own runs its <script> here, next to the client's token.
-// The same list and policy the CDN uses for uploads (cdn/util/responseSafety.ts).
-const PROXIED_MEDIA_TYPE = /^(image\/(png|jpeg|gif|webp|avif|apng|bmp|x-icon|vnd\.microsoft\.icon)|video\/[\w.+-]+|audio\/[\w.+-]+)(;|$)/i;
-const PROXIED_CONTENT_SECURITY_POLICY = "sandbox; default-src 'none'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'unsafe-inline'; frame-ancestors 'none'";
-
 async function serveExternalProxy(req: Request, res: Response) {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Content-Security-Policy", PROXIED_CONTENT_SECURITY_POLICY);
     const [, , hash, ...rest] = req.originalUrl.split("?")[0].split("/");
     const path = rest.join("/");
     if (!hash || !verifyExternalPath(hash, path)) return res.status(403).send("Invalid signature");
@@ -50,6 +60,8 @@ async function serveExternalProxy(req: Request, res: Response) {
                 .finally(release);
             if (!frame) return res.status(415).send("Unable to render a preview frame");
             res.setHeader("content-type", "image/jpeg");
+            res.setHeader("content-security-policy", SANDBOX_POLICY);
+            res.setHeader("x-content-type-options", "nosniff");
             res.setHeader("cache-control", `public, max-age=${Config.get().cdn.proxyCacheHeaderSeconds}`);
             res.setHeader("access-control-allow-origin", "*");
             res.setHeader("cross-origin-resource-policy", "cross-origin");
@@ -77,14 +89,17 @@ async function serveExternalProxy(req: Request, res: Response) {
             { maxBytes: MAX_SIZE, timeoutMs: 15000 },
         );
         if (!upstream.ok) return res.status(upstream.status).send(`Media proxy responded with ${upstream.status}`);
-        const type = upstream.headers.get("content-type") ?? "";
-        if (!PROXIED_MEDIA_TYPE.test(type)) return res.status(415).send("Unsupported media type");
+        const type = upstream.headers.get("content-type")?.split(";")[0].trim().toLowerCase() ?? "";
+        if (!MEDIA_TYPES.has(type)) return res.status(415).send("Unsupported media type");
         const body = Buffer.from(await upstream.arrayBuffer());
         res.status(upstream.status);
         for (const header of PASSTHROUGH_HEADERS) {
             const value = upstream.headers.get(header);
             if (value) res.setHeader(header, value);
         }
+        res.setHeader("content-type", type);
+        res.setHeader("content-security-policy", SANDBOX_POLICY);
+        res.setHeader("x-content-type-options", "nosniff");
         res.setHeader("content-length", String(body.length));
         res.setHeader("cache-control", `public, max-age=${Config.get().cdn.proxyCacheHeaderSeconds}`);
         res.setHeader("access-control-allow-origin", "*");
