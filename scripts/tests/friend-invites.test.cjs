@@ -55,6 +55,22 @@ const load = (rows, invites, events) => {
                     Invite: {
                         delete: async ({ code }) => invites.delete(code),
                         update: async ({ code }, values) => Object.assign(invites.get(code), values),
+                        createQueryBuilder: () => {
+                            let code;
+                            const query = {
+                                update: () => query,
+                                set: () => query,
+                                where: (_sql, params) => {
+                                    code = params.code;
+                                    return query;
+                                },
+                                execute: async () => {
+                                    const row = invites.get(code);
+                                    return { affected: row && (row.max_uses === 0 || row.uses < row.max_uses) ? 1 : 0 };
+                                },
+                            };
+                            return query;
+                        },
                     },
                 },
             })[name],

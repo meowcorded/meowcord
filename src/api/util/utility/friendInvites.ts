@@ -64,6 +64,13 @@ export async function acceptFriendInvite(invite: Invite, user_id: string) {
     const [ownCount, theirCount] = await Promise.all([Relationship.count({ where: { from_id: user_id } }), Relationship.count({ where: { from_id: inviter_id } })]);
     if ((!mine && ownCount >= maxFriends) || (!theirs && theirCount >= maxFriends)) throw DiscordApiErrors.MAXIMUM_FRIENDS.withParams(maxFriends);
 
+    const claimed = await Invite.createQueryBuilder()
+        .update()
+        .set({ uses: () => "uses + 1" })
+        .where("code = :code AND (max_uses = 0 OR uses < max_uses)", { code: invite.code })
+        .execute();
+    if (!claimed.affected) throw DiscordApiErrors.UNKNOWN_INVITE;
+
     const since = new Date();
     const befriend = (row: Relationship | null, from_id: string, to_id: string) =>
         Object.assign(row ?? Relationship.create({ id: Snowflake.generate(), from_id, to_id }), { type: RelationshipType.FRIEND, since, note: null, nickname: row?.nickname });
@@ -73,7 +80,6 @@ export async function acceptFriendInvite(invite: Invite, user_id: string) {
 
     invite.uses++;
     if (invite.max_uses !== 0 && invite.uses >= invite.max_uses) await Invite.delete({ code: invite.code });
-    else await Invite.update({ code: invite.code }, { uses: invite.uses });
 
     const [me, inviter, ownPresence, inviterPresence] = await Promise.all([
         User.findOneOrFail({ where: { id: user_id } }),
