@@ -69,10 +69,16 @@ function mfaWithStoredFailures() {
             RateLimit: {
                 findOne: async ({ where }) => rows.get(where.id) ?? null,
                 hit: async (id, executor_id, max, window) => {
-                    const row = rows.get(id) ?? { id, executor_id, hits: 0, expires_at: new Date(Date.now() + window * 1000) };
+                    const stored = rows.get(id);
+                    const row = stored && stored.expires_at.getTime() > Date.now() ? stored : { id, executor_id, hits: 0, expires_at: new Date(Date.now() + window * 1000) };
                     row.hits++;
                     rows.set(id, row);
                     return row;
+                },
+                query: async (_sql, [id]) => {
+                    const row = rows.get(id);
+                    if (row?.hits > 0) row.hits--;
+                    return [];
                 },
             },
             SecurityKey: { count: async () => 0 },
@@ -106,5 +112,5 @@ test("wrong two factor codes are capped per account across every ticket", async 
 test("a correct code before the cap is accepted and does not count as a failure", async () => {
     const { mfa, rows } = mfaWithStoredFailures();
     assert.equal(await mfa.verifyMfaMethod("1", "totp", "123456", { typ: "login", uid: "1" }), true);
-    assert.equal(rows.size, 0);
+    assert.equal(rows.get("1:failed-mfa-code")?.hits ?? 0, 0);
 });

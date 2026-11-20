@@ -303,11 +303,11 @@ export async function verifyMfaMethod(user_id: string, type: string, data: unkno
     if (ticket.uid !== user_id || (ticket.typ !== "login" && ticket.typ !== "mfa")) return false;
     if (typeof data === "string" && data.length > 16384) return false;
     if (!GUESSABLE_METHODS.has(type)) return checkMfaMethod(user_id, type, data, ticket);
-    const failures = await RateLimit.findOne({ where: { id: failedCodeKey(user_id) } });
-    if (failures && failures.expires_at.getTime() > Date.now() && failures.hits >= FAILED_CODE_ATTEMPTS) return false;
-    if (await checkMfaMethod(user_id, type, data, ticket)) return true;
-    await RateLimit.hit(failedCodeKey(user_id), user_id, FAILED_CODE_ATTEMPTS, FAILED_CODE_WINDOW_SECONDS);
-    return false;
+    const attempt = await RateLimit.hit(failedCodeKey(user_id), user_id, FAILED_CODE_ATTEMPTS + 1, FAILED_CODE_WINDOW_SECONDS);
+    if (attempt.hits > FAILED_CODE_ATTEMPTS) return false;
+    if (!(await checkMfaMethod(user_id, type, data, ticket))) return false;
+    await RateLimit.query(`UPDATE rate_limits SET hits = hits - 1 WHERE id = $1 AND hits > 0`, [failedCodeKey(user_id)]);
+    return true;
 }
 
 async function checkMfaMethod(user_id: string, type: string, data: unknown, ticket: Ticket) {
