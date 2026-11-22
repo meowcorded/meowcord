@@ -58,7 +58,7 @@ const fixture = (tags = ["base", "stale", "older"]) => {
             },
         },
         "@spacebar/api/util/handlers/ApplicationCommands": {},
-        "@spacebar/api/util": {},
+        "@spacebar/api/util": { requireMfaIfEnabled: async () => undefined },
     };
     const module = { exports: {} };
     vm.runInNewContext(source, {

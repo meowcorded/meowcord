@@ -71,6 +71,7 @@ export async function isPublicUrl(url: string | URL, opts: { httpsOnly?: boolean
 export interface PublicFetchLimits {
     maxBytes?: number;
     timeoutMs?: number;
+    firstByteMs?: number;
     trustedCdnOrigin?: string;
     allowExternal?: boolean;
 }
@@ -182,7 +183,17 @@ export async function fetchPublicUrl(url: string, init: RequestInit = {}, redire
     if (publicFetchOverride) return publicFetchOverride(url, init, redirects, limits);
     const maxBytes = limits.maxBytes ?? 5 * 1024 * 1024;
     const timeoutMs = limits.timeoutMs ?? 15000;
-    if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 64 * 1024 * 1024 || !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 30000)
+    const firstByteMs = limits.firstByteMs ?? timeoutMs;
+    if (
+        !Number.isSafeInteger(maxBytes) ||
+        maxBytes <= 0 ||
+        maxBytes > 64 * 1024 * 1024 ||
+        !Number.isSafeInteger(timeoutMs) ||
+        timeoutMs <= 0 ||
+        timeoutMs > 30000 ||
+        !Number.isSafeInteger(firstByteMs) ||
+        firstByteMs <= 0
+    )
         throw new Error("Invalid public fetch limits");
     if (!Number.isSafeInteger(redirects) || redirects < 0 || redirects > 5) throw new Error("Invalid public redirect limit");
     if (init.body != null && typeof init.body !== "string" && !(init.body instanceof Uint8Array)) throw new Error("Unsupported public request body");
@@ -190,6 +201,8 @@ export async function fetchPublicUrl(url: string, init: RequestInit = {}, redire
     if (body && body.length > maxBytes) throw new Error("Public request exceeds byte limit");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new Error("Public URL request timed out")), timeoutMs);
+    const firstByte = firstByteMs < timeoutMs ? setTimeout(() => controller.abort(new Error("Public URL sent no response in time")), firstByteMs) : undefined;
+    const answered = () => clearTimeout(firstByte);
     const signal = init.signal ? AbortSignal.any([init.signal, controller.signal]) : controller.signal;
     const proxy = outboundProxy();
     const exchangeDirect = (target: URL, address: { address: string; family: number }, method: string, outgoing: Record<string, string>, payload?: Buffer) =>
@@ -205,6 +218,7 @@ export async function fetchPublicUrl(url: string, init: RequestInit = {}, redire
                     lookup: (_hostname, options, callback) => callback(null, options.all ? [address] : address.address, address.family),
                 },
                 (response) => {
+                    answered();
                     const status = response.statusCode ?? 0;
                     const headers = Object.entries(response.headers).flatMap(([name, values]) =>
                         (Array.isArray(values) ? values : values === undefined ? [] : [values]).map((value): [string, string] => [name, value]),
@@ -243,7 +257,7 @@ export async function fetchPublicUrl(url: string, init: RequestInit = {}, redire
                 try {
                     const result =
                         viaProxy && proxy
-                            ? await socksExchange(proxy, target, address.address, method, outgoing, payload, signal, maxBytes)
+                            ? await socksExchange(proxy, target, address.address, method, outgoing, payload, signal, maxBytes, answered)
                             : await exchangeDirect(target, address, method, outgoing, payload);
                     rememberFamily(target.hostname, address.family);
                     return result;
@@ -291,5 +305,6 @@ export async function fetchPublicUrl(url: string, init: RequestInit = {}, redire
     } finally {
         stop();
         clearTimeout(timer);
+        answered();
     }
 }

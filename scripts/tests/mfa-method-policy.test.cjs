@@ -34,7 +34,7 @@ function harness({ mfa = false, keys = 0 } = {}) {
             },
             SecurityKey: {
                 count: async () => keys,
-                find: async () => Array.from({ length: keys }, () => ({})),
+                find: async () => Array.from({ length: keys }, () => ({ key_id: "aWQ=" })),
                 findOne: async () => credentialKey,
             },
             BackupCode: {
@@ -301,4 +301,16 @@ test("authenticated TOTP disable retains a correctly bound internal verification
     const h = harness({ mfa: true });
     await h.disable({ user_id: "actor", headers: {}, body: { code: "123456" } }, h.response);
     assert.equal(h.issued[0].token, "existing-token");
+});
+
+test("application owner step-up applies to every second factor, not only TOTP", async () => {
+    for (const state of [{ mfa: true }, { keys: 1 }]) {
+        const h = harness(state);
+        const req = { user_id: "actor", headers: {}, body: {}, protocol: "https", get: () => "chat.example.com" };
+        await assert.rejects(h.shared.requireMfaIfEnabled(req), /Two factor is required/);
+        await assert.rejects(h.shared.requireMfaIfEnabled({ user_id: "actor", headers: {}, body: { code: "000000" } }), /Invalid two-factor code/);
+    }
+    await harness({ mfa: true }).shared.requireMfaIfEnabled({ user_id: "actor", headers: {}, body: { code: "123456" } });
+    await harness({ keys: 1 }).shared.requireMfaIfEnabled({ user_id: "actor", headers: {}, body: { code: "abcdef12" } });
+    await harness().shared.requireMfaIfEnabled({ user_id: "actor", headers: {}, body: {} });
 });

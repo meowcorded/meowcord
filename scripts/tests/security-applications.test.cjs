@@ -8,13 +8,13 @@ function botRoutes(app) {
         "@spacebar/util/util/IdentityModeration": { assertIdentityNameAllowed: () => undefined },
         "lambert-server/HTTPError": { HTTPError: StubError },
         "@spacebar/api/util": {
-            throttledCodeAttempt: async (_, verify) => verify(),
-            verifyTotp: (_, code) => code === "123456",
+            requireMfaIfEnabled: async (req) => {
+                if (req.body?.code !== "123456") throw new StubError("mfa required", 401);
+            },
             revokeSessions: async (id) => calls.push(["revokeSessions", id]),
         },
         "@spacebar/database": {
             Application: { findOneOrFail: async () => app },
-            User: { findOneOrFail: async () => ({ id: "owner", totp_secret: "SECRET" }) },
         },
         "@spacebar/util": {
             DiscordApiErrors: { ACTION_NOT_AUTHORIZED_ON_APPLICATION: new StubError("not owner", 403), OAUTH2_APPLICATION_BOT_ABSENT: new StubError("no bot") },

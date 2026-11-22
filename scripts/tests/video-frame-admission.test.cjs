@@ -56,7 +56,7 @@ test("a preview slot is reserved before the video is downloaded and counts again
 
 test("callers route every preview through a reservation taken before the download", () => {
     const proxy = fs.readFileSync(path.join(__dirname, "../../src/api/middlewares/ExternalProxy.ts"), "utf8");
-    assert.ok(proxy.indexOf("reserveVideoFrame()") < proxy.indexOf("maxBytes: MAX_SIZE, timeoutMs: 15000 })\n"));
+    assert.ok(proxy.indexOf("reserveVideoFrame()") < proxy.indexOf("maxBytes: MAX_SIZE, timeoutMs: 15000, firstByteMs: 5000 })\n"));
     const cdn = fs.readFileSync(path.join(__dirname, "../../src/cdn/routes/attachments.ts"), "utf8");
     assert.ok(cdn.indexOf("reserveVideoFrame()") < cdn.indexOf("for await (const chunk of inspected.stream)"));
     assert.match(cdn, /extractVideoFrame\([^)]*\), undefined, true\)/);

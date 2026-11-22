@@ -190,6 +190,7 @@ export const socksExchange = async (
     payload: Buffer | undefined,
     signal: AbortSignal,
     maxBytes: number,
+    onHead?: () => void,
 ): Promise<RawExchange> => {
     const socket = await socksTunnel(proxy, target, address, signal);
     try {
@@ -198,6 +199,7 @@ export const socksExchange = async (
         for (const [name, value] of Object.entries(headers)) if (!/[\r\n]/.test(name + value)) lines.push(`${name}: ${value}`);
         socket.write(Buffer.concat([Buffer.from(`${lines.join("\r\n")}\r\n\r\n`, "latin1"), payload ?? Buffer.alloc(0)]));
         const head = (await reader.until("\r\n\r\n", HEADER_LIMIT)).toString("latin1").split("\r\n");
+        onHead?.();
         const status = Number(/^HTTP\/1\.[01] (\d{3})/.exec(head[0])?.[1]);
         if (!status) throw new Error("Invalid public response");
         const responseHeaders = head

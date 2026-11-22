@@ -376,6 +376,15 @@ export async function requireMfa(req: Request, opts: { password?: unknown } = {}
     });
 }
 
+export async function requireMfaIfEnabled(req: Request) {
+    const user = await User.findOneOrFail({ where: { id: req.user_id }, select: { id: true, mfa_enabled: true } });
+    if (!user.mfa_enabled && !(await SecurityKey.count({ where: { user_id: req.user_id } }))) return;
+    const code = req.body?.code;
+    if (typeof code !== "string" || !code || hasRecentMfa(req)) return requireMfa(req);
+    if (!(await throttledCodeAttempt(req.user_id, () => verifyMfaMethod(req.user_id, user.mfa_enabled ? "totp" : "backup", code, { typ: "mfa", uid: req.user_id }))))
+        throw MfaInvalidCode();
+}
+
 export function issueRecentMfa(res: Response, user_id: string) {
     const token = signTicket({ typ: "mfa_verified", uid: user_id });
     res.cookie("__Secure-recent_mfa", token, {

@@ -2,8 +2,8 @@ import { assertIdentityNameAllowed } from "@spacebar/util/util/IdentityModeratio
 import { Request, Response, Router } from "express";
 import { HTTPError } from "lambert-server/HTTPError";
 import { route } from "@spacebar/api/middlewares";
-import { revokeSessions, throttledCodeAttempt, verifyTotp } from "@spacebar/api/util";
-import { Application, User } from "@spacebar/database";
+import { requireMfaIfEnabled, revokeSessions } from "@spacebar/api/util";
+import { Application } from "@spacebar/database";
 import { DiscordApiErrors, FieldErrors, broadcastUserUpdate, createAppBotUser, generateToken, handleFile } from "@spacebar/util";
 import { BotModifySchema } from "@spacebar/schemas";
 
@@ -55,16 +55,11 @@ router.post(
             where: { id: req.params.application_id as string },
             relations: { bot: true },
         });
-        const owner = await User.findOneOrFail({
-            where: { id: app.owner_id },
-            select: { id: true, totp_secret: true },
-        });
 
         if (!app.bot) throw DiscordApiErrors.OAUTH2_APPLICATION_BOT_ABSENT;
-        if (owner.id != req.user_id) throw DiscordApiErrors.ACTION_NOT_AUTHORIZED_ON_APPLICATION;
+        if (app.owner_id != req.user_id) throw DiscordApiErrors.ACTION_NOT_AUTHORIZED_ON_APPLICATION;
 
-        if (owner.totp_secret && (!req.body.code || !(await throttledCodeAttempt(req.user_id, () => verifyTotp(owner.totp_secret, req.body.code)))))
-            throw new HTTPError(req.t("auth:login.INVALID_TOTP_CODE"), 60008);
+        await requireMfaIfEnabled(req);
 
         app.bot.data = { hash: undefined, valid_tokens_since: new Date() };
 

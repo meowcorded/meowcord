@@ -159,15 +159,18 @@ test("direct two factor codes outside the ticket flow stop being checked after t
     assert.equal(verified, DIRECT_CODE_ATTEMPTS);
     assert.deepEqual(results.slice(DIRECT_CODE_ATTEMPTS), [false, false, false]);
     assert.equal(calls[0].id, "1:direct-mfa-code");
+    for (const file of ["src/api/routes/users/@me/mfa/totp/disable.ts", "src/api/util/utility/mfa.ts"]) {
+        const source = fs.readFileSync(file, "utf8");
+        assert.match(source, /throttledCodeAttempt\(req\.user_id/, file);
+    }
     for (const file of [
-        "src/api/routes/users/@me/mfa/totp/disable.ts",
         "src/api/routes/applications/#application_id/reset.ts",
         "src/api/routes/applications/#application_id/index.ts",
         "src/api/routes/applications/#application_id/bot/index.ts",
     ]) {
         const source = fs.readFileSync(file, "utf8");
-        assert.match(source, /throttledCodeAttempt\(req\.user_id/, file);
-        assert.doesNotMatch(source, /from "node-2fa"/, file);
+        assert.match(source, /requireMfaIfEnabled\(req\)/, file);
+        assert.doesNotMatch(source, /from "node-2fa"|totp_secret/, file);
     }
 });
 
