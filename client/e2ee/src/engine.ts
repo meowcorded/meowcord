@@ -366,6 +366,7 @@ export class Engine {
         {
             promise: Promise<EnvelopeBackupKey | null>;
             resolve: (value: EnvelopeBackupKey | null) => void;
+            reject: (error: unknown) => void;
         }
     >();
     private lookupTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1290,9 +1291,13 @@ export class Engine {
                             this.canonical.set(local, Promise.resolve(id));
                             return local;
                         },
-                        () => {
+                        (error: { status?: number }) => {
                             this.localOf.delete(id);
-                            return null;
+                            if (error?.status === 404) {
+                                this.federation = false;
+                                return null;
+                            }
+                            throw error;
                         },
                     ),
                 );
@@ -1561,10 +1566,12 @@ export class Engine {
         const existing = this.lookups.get(messageId);
         if (existing) return existing.promise;
         let resolve: (value: EnvelopeBackupKey | null) => void = () => {};
-        const promise = new Promise<EnvelopeBackupKey | null>((r) => {
-            resolve = r;
+        let reject: (error: unknown) => void = () => {};
+        const promise = new Promise<EnvelopeBackupKey | null>((accept, refuse) => {
+            resolve = accept;
+            reject = refuse;
         });
-        this.lookups.set(messageId, { promise, resolve });
+        this.lookups.set(messageId, { promise, resolve, reject });
         this.lookupTimer ??= setTimeout(() => this.flushLookups(), 25);
         return promise;
     }
@@ -1588,6 +1595,8 @@ export class Engine {
                 });
         } catch (error) {
             console.error("[e2ee] backup key lookup failed", error);
+            batch.forEach(([, { reject }]) => reject(error));
+            return;
         }
         batch.forEach(([id, { resolve }]) => resolve(this.storedKeys.get(id) ?? null));
     }

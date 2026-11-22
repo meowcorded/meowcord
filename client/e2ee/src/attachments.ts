@@ -79,20 +79,27 @@ const renderPoster = (blob: Blob, type: string) =>
         const src = URL.createObjectURL(new Blob([blob], { type }));
         const done = (image: Blob | null) => {
             clearTimeout(timer);
+            video.onloadeddata = null;
+            video.onerror = null;
             video.removeAttribute("src");
             URL.revokeObjectURL(src);
             resolve(image);
         };
         const timer = setTimeout(() => done(null), 10000);
         video.muted = true;
+        video.playsInline = true;
         video.preload = "auto";
         video.onloadeddata = () => {
-            const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-            canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-            canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(done, "image/jpeg", 0.85);
+            try {
+                const scale = Math.min(1, POSTER_WIDTH / (video.videoWidth || POSTER_WIDTH));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+                canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+                canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(done, "image/jpeg", 0.85);
+            } catch {
+                done(null);
+            }
         };
         video.onerror = () => done(null);
         video.src = src;
